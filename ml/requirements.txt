@@ -1,4 +1,4 @@
-fastapi
-uvicorn[standard]
+flask
+gunicorn
 python-multipart
 pillow
