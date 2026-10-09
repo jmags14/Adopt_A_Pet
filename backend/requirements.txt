@@ -5,3 +5,4 @@ pymongo
 requests
 bcrypt
 pyjwt
+python-dotenv
