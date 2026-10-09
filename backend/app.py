@@ -5,11 +5,26 @@ from flask import Flask, jsonify, request
 from flask_cors import CORS
 from pymongo import MongoClient
 
+
+import datetime
+import bcrypt
+import jwt
+
+
+from dotenv import load_dotenv
+load_dotenv()
+
+
 app = Flask(__name__)
 CORS(app)
 
-db = MongoClient(os.environ["MONGO_URI"]).get_default_database()
-ML_URL = os.environ["ML_URL"]
+
+client = MongoClient(os.environ["MONGO_URI"])
+db = client["adoptapet"]
+# ML_URL = os.environ["ML_URL"]
+# JWT_SECRET = os.environ("JWT_SECRET_KEY")
+
+
 
 
 @app.get("/api/health")
@@ -29,6 +44,84 @@ def health():
     return jsonify(status)
 
 
+@app.post("/api/auth/signup")
+def signup():
+    data = request.get_json(silent=True) or {}
+    email = (data.get("email") or "").strip().lower()
+    password = data.get("password") or ""
+
+
+    if not email or "@" not in email:
+        return jsonify({"error" : "A valid email is required"}), 400
+    if len(password) < 8:
+        return jsonify({"error" : "Password must be at least 8 characters"}), 400
+    if db.users.find_one({"email" : email}):
+        return jsonify({"error" : "Email already registered"}), 409
+
+
+    password_hash = bcrypt.hashpw(password.encode("utf-8"), bcrypt.gensalt())
+    now = datetime.datetime.now(datetime.timezone.utc)
+    result = db.users.insert_one({
+        "email" : email,
+        "password" : password_hash.decode("utf-8"),
+        "createdAt" : now
+    })
+
+
+    return jsonify({"message" : "Account created successfully"}), 201
+
+
+@app.post("/api/auth/login")
+def login():
+    data = request.get_json(silent=True) or {}
+    email = (data.get("email") or "").strip().lower()
+    password = data.get("password") or ""
+
+
+    user = db.users.find_one({"email" : email})
+
+
+    if user is None:
+        return jsonify({"error: Invalid email or password"}), 401
+
+
+    if not bcrypt.checkpw(
+        password.encode("utf-8"),
+        user["password"].encode("utf-8")
+    ):
+        return jsonify({"error" : "Invalid email or password"}), 401
+
+
+    return jsonify({"message" : "Login successful"}), 200
+
+
+@app.get("/api/dogs")
+def get_dogs():
+    dogs = list(db.dogs.find().limit(20))
+
+
+    for dog in dogs:
+        dog["id"] = str(dog.pop("_id"))
+
+
+    return jsonify(dogs), 200
+
+
+@app.get("/api/favorites")
+def get_favorites():
+    return jsonify({"message": "Not implemented yet"}), 501
+
+
+@app.post("/api/favorites")
+def add_favorite():
+    return jsonify({"message": "Not implemented yet"}), 501
+
+
+@app.delete("/api/favorites")
+def remove_favorite():
+    return jsonify({"message": "Not implemented yet"}), 501
+
+
 @app.post("/api/predict")
 def predict():
     """Receives an image from React, forwards it to the ML service, saves the result."""
@@ -45,4 +138,9 @@ def predict():
     return jsonify(result), ml_resp.status_code
 
 
+if __name__ == "__main__":
+    app.run(debug=True, port=5001)
+
 # TODO: /api/auth/signup, /api/auth/login, /api/dogs, /api/favorites (see project plan)
+
+
