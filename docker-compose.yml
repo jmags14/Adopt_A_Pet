@@ -1,0 +1,40 @@
+# Adopt-a-Pet: full stack with one command ->  docker compose up --build
+services:
+
+  mongo:
+    image: mongo:7
+    volumes:
+      - mongo_data:/data/db          # keeps your data when containers restart
+    ports:
+      - "27017:27017"                # optional: lets you peek with MongoDB Compass
+
+  ml:
+    build: ./ml
+    # no "ports" on purpose: only the backend can reach it (at http://ml:8000)
+
+  backend:
+    build: ./backend
+    ports:
+      - "5000:5000"
+    env_file: .env
+    environment:
+      MONGO_URI: mongodb://mongo:27017/adoptapet
+      ML_URL: http://ml:8000
+    depends_on:
+      - mongo
+      - ml
+
+  frontend:
+    build: ./frontend
+    ports:
+      - "5173:5173"
+    environment:
+      VITE_API_URL: http://localhost:5000
+    volumes:
+      - ./frontend:/app               # live reload while you edit
+      - /app/node_modules
+    depends_on:
+      - backend
+
+volumes:
+  mongo_data:
