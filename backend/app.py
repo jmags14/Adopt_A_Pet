@@ -10,6 +10,9 @@ import bcrypt
 import jwt
 from functools import wraps
 from bson import ObjectId
+from PIL import Image, UnidentifiedImageError
+
+from ml.mlmain import MOCK, predict_image  # dog breed model, loaded once when the backend starts
 
 from dotenv import load_dotenv
 load_dotenv()  # FIX: loads backend/.env automatically (was "file.env")
@@ -23,7 +26,6 @@ CORS(app)
 
 client = MongoClient(os.environ["MONGO_URI"])
 db = client["adoptapet"]
-ML_URL = os.environ.get("ML_URL", "http://localhost:8000") #- function/pipeline (receive dog image (output) and returns a dog breed, confidence) post
 JWT_SECRET = os.environ["JWT_SECRET_KEY"]  # FIX: uncommented, square brackets
 
 
@@ -52,18 +54,15 @@ def require_auth(f):
 
 @app.get("/api/health")
 def health():
-   """Checks Mongo and the ML service. If this returns all 'ok', Docker is wired correctly."""
+   """Checks Mongo and the ML model. If this returns all 'ok', Docker is wired correctly."""
    status = {"backend": "ok"}
    try:
        db.command("ping")
        status["mongo"] = "ok"
    except Exception as e:
        status["mongo"] = f"error: {e}"
-   try:
-       requests.get(f"{ML_URL}/health", timeout=3).raise_for_status()
-       status["ml"] = "ok"
-   except Exception as e:
-       status["ml"] = f"error: {e}"
+   # the model runs inside the backend (ml/mlmain.py); mock means the weights file is missing
+   status["ml"] = "mock (no weights file in backend/ml/)" if MOCK else "ok"
    return jsonify(status)
 
 
@@ -515,36 +514,32 @@ def get_my_profile():
 
 @app.post("/api/predict")
 def predict():
-   """Receives an image from React, forwards it to the ML service, saves the result."""
+   """Receives an image from React, runs the dog breed model (ml/mlmain.py) on it, returns the result."""
    if "image" not in request.files:
        return jsonify({"error": "No image uploaded (field name must be 'image')"}), 400
    img = request.files["image"]
+   if not (img.mimetype or "").startswith("image/"):
+       return jsonify({"error": "File uploaded is not an image"}), 400
 
 
 
 
-   # FIX: don't crash if the ML service is down or sends back bad data
    try:
-       ml_resp = requests.post(
-           f"{ML_URL}/predict",
-           files={"file": (img.filename, img.stream, img.mimetype)},
-           timeout=30,
-       )
-       result = ml_resp.json()
-   except requests.RequestException as e:
-       return jsonify({"error": f"ML service unavailable: {e}"}), 502
-   except ValueError:
-       return jsonify({"error": "Invalid response from ML service"}), 502
+       image = Image.open(img.stream)
+       image.load()   # actually read the pixels, so broken files fail here
+   except (UnidentifiedImageError, OSError):
+       return jsonify({"error": "File is not a readable image"}), 400
 
 
 
 
+   result = predict_image(image)
 
 
 
 
    # TODO (week 3-4): attach userId from JWT, save to UploadedImage collection
-   return jsonify(result), ml_resp.status_code
+   return jsonify(result), 200
 
 
 

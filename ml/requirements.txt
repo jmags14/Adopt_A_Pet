@@ -1,4 +1,0 @@
-flask
-gunicorn
-python-multipart
-pillow
