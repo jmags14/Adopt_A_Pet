@@ -8,21 +8,15 @@ services:
     ports:
       - "27017:27017"                # optional: lets you peek with MongoDB Compass
 
-  ml:
-    build: ./ml
-    # no "ports" on purpose: only the backend can reach it (at http://ml:8000)
-
   backend:
-    build: ./backend
+    build: ./backend                   # also runs the dog breed model (backend/ml/mlmain.py)
     ports:
       - "5000:5000"
     env_file: .env
     environment:
       MONGO_URI: mongodb://mongo:27017/adoptapet
-      ML_URL: http://ml:8000
     depends_on:
       - mongo
-      - ml
 
   frontend:
     build: ./frontend
