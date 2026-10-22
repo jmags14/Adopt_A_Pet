@@ -1,25 +1,48 @@
-# core library 
+import json
 import torch
-# supplies pre-trained model architectures such as ResNet
+import torch.nn as nn
 from torchvision import models, transforms
-#python imaging library (PIL), open, manipulate, and decode 
 from PIL import Image
 
-# 1. Load the pre-trained ResNet50 model
-weights = models.ResNet50_Weights.DEFAULT
-model = models.resnet50(weights=weights)
+# 1. Device configuration
+device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+
+# 2. Load class names mapping
+with open("class_names.json", "r") as f:
+    class_names = json.load(f)
+
+# 3. Instantiate ResNet50 and update final classification layer
+model = models.resnet18(weights=None)
+num_ftrs = model.fc.in_features
+model.fc = nn.Linear(num_ftrs, len(class_names))
+
+# 4. Load your fine-tuned weights
+model.load_state_dict(torch.load("dog_breed_resnet50_weights.pth", map_location=device))
+model = model.to(device)
 model.eval()
 
-# 2. Preprocess the image using the model's standard transforms
-preprocess = weights.transforms()
-img = Image.open("test_dog.jpg").convert("RGB")
-batch = preprocess(img).unsqueeze(0)
+# 5. Define standard inference transform
+inference_transform = transforms.Compose([
+    transforms.Resize(256),
+    transforms.CenterCrop(224),
+    transforms.ToTensor(),
+    transforms.Normalize([0.485, 0.456, 0.406], [0.229, 0.224, 0.225])
+])
 
-# 3. Predict class probabilities
-with torch.no_grad():
-    prediction = model(batch).squeeze(0).softmax(0)
-    class_id = prediction.argmax().item()
-    score = prediction[class_id].item()
-    category_name = weights.meta["categories"][class_id]
+def predict_image(image_path):
+    img = Image.open(image_path).convert("RGB")
+    input_tensor = inference_transform(img).unsqueeze(0).to(device)
 
-print(f"Predicted Class: {category_name} ({score * 100:.2f}%)")
+    with torch.no_grad():
+        outputs = model(input_tensor)
+        probabilities = torch.nn.functional.softmax(outputs, dim=1)
+        pred_idx = torch.argmax(probabilities, dim=1).item()
+        confidence = probabilities[0][pred_idx].item() * 100
+
+    clean_breed = class_names[pred_idx].split("-")[-1].replace("_", " ")
+    return clean_breed, confidence
+
+if __name__ == "__main__":
+    test_image = "test_dog.jpg"
+    breed, conf = predict_image(test_image)
+    print(f"Predicted Breed: {breed} ({conf:.2f}%)")
