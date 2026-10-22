@@ -56,7 +56,7 @@ function ChatIcon() {
 function BookmarkIcon() {
     return (
         <img
-            src={'/src/assets/saved.png'}
+            src={'/src/assets/bookmark.png'}
             className="bookmark-icon"
             alt="Bookmark Icon"
             aria-hidden="true"
@@ -68,7 +68,7 @@ function BookmarkIcon() {
 function PawIcon() {
     return (
         <img
-            src={'/src/assets/paw.webp'}
+            src={'/src/assets/paw.png'}
             className="paw"
             alt="Paw Icon"
             aria-hidden="true"
@@ -134,7 +134,7 @@ function AuthPanel({ signup, onToggleSignup, onSubmit }) {
         <section className="auth-panel">
             <img
                 className="dog-logo login-logo"
-                src="\src\assets\dog-logo.png" /* WHY IS THIS A NIGHTMARE*/
+                src="\src\assets\full_logo.png" /* WHY IS THIS A NIGHTMARE p.s. i just fixed it :D*/
                 alt="Dog face logo"
             />
 
