@@ -6,3 +6,7 @@ requests
 bcrypt
 pyjwt
 python-dotenv
+# ML (ml/mlmain.py). In Docker, torch + torchvision come from the CPU-only build in the Dockerfile
+torch
+torchvision
+pillow
