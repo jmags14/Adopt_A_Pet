@@ -16,7 +16,7 @@ with open("class_names.json", "r") as f:
     class_names = json.load(f)
 
 # 3. Instantiate model matching your trained architecture
-model = models.resnet18(weights=None)
+model = models.resnet50(weights=None)
 num_ftrs = model.fc.in_features
 model.fc = nn.Linear(num_ftrs, len(class_names))
 
@@ -48,7 +48,7 @@ async def predict(file: UploadFile = File(...)):
         pred_idx = torch.argmax(probabilities, dim=1).item()
         confidence = probabilities[0][pred_idx].item() * 100
 
-    clean_breed = class_names[pred_idx].split("-")[-1].replace("_", " ")
+    clean_breed = class_names[pred_idx].split("-", 1)[1].replace("_", " ")
 
     # Schema format expected by backend Express and MongoDB UploadedImage
     return {

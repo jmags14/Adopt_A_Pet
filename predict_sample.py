@@ -12,7 +12,7 @@ with open("class_names.json", "r") as f:
     class_names = json.load(f)
 
 # 3. Instantiate ResNet50 and update final classification layer
-model = models.resnet18(weights=None)
+model = models.resnet50(weights=None)
 num_ftrs = model.fc.in_features
 model.fc = nn.Linear(num_ftrs, len(class_names))
 
@@ -39,7 +39,7 @@ def predict_image(image_path):
         pred_idx = torch.argmax(probabilities, dim=1).item()
         confidence = probabilities[0][pred_idx].item() * 100
 
-    clean_breed = class_names[pred_idx].split("-")[-1].replace("_", " ")
+    clean_breed = class_names[pred_idx].split("-", 1)[1].replace("_", " ")
     return clean_breed, confidence
 
 if __name__ == "__main__":
