@@ -1,7 +1,11 @@
 flask
 flask-cors
-gunicorn
+fastapi
+uvicorn[standard]
+python-multipart
 pymongo
 requests
 bcrypt
 pyjwt
+python-dotenv
+pillow

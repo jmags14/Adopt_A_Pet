@@ -1,4 +1,692 @@
+/* =========================================================
+   ADOPT A PET — GLOBAL STYLES
+   ========================================================= */
+
+/* Theme colors: update these variables to change the site palette. */
 :root {
+    --pink: #df7197;
+    --outer-pink: #e5a0b5;
+    --pale-pink: #f0cadd;
+    --blue: #b5e0e3;
+    --blue-light: #cce9e4;
+    --ink: #25151e;
+    --cream: #fbf7e6;
+}
+
+/* Make element sizing predictable and remove browser defaults. */
+* {
+    box-sizing: border-box;
+}
+
+html,
+body,
+#root {
+    min-height: 100%;
+    margin: 0;
+}
+
+body {
+    font-family: 'Trebuchet MS', Arial, sans-serif;
+    color: var(--ink);
+}
+
+button,
+input {
+    font: inherit;
+}
+
+button {
+    cursor: pointer;
+}
+
+/* =========================================================
+   PAGE BACKGROUND AND DECORATIVE STARS
+   ========================================================= */
+
+/* Outer page: centers the app frame on the pink background. */
+.page {
+    position: relative;
+    display: grid;
+    place-items: center;
+    min-height: 100vh;
+    overflow: hidden;
+    padding: 5.5vh 5.2vw;
+    background: var(--outer-pink);
+}
+
+/* Shared setup for the decorative stars around the frame. */
+.star-border {
+    position: absolute;
+    display: flex;
+    justify-content: space-between;
+    color: var(--blue);
+    pointer-events: none;
+}
+
+.star {
+    width: clamp(19px, 3.1vw, 42px);
+    height: auto;
+    flex: 0 0 auto;
+}
+
+/* Top and bottom borders arrange stars in horizontal rows. */
+.star-border-top,
+.star-border-bottom {
+    right: 0.8%;
+    left: 0.8%;
+    align-items: center;
+}
+
+.star-border-top {
+    top: 1.1%;
+}
+
+.star-border-bottom {
+    bottom: 1.1%;
+}
+
+/* Side borders arrange stars vertically. */
+.star-border-left,
+.star-border-right {
+    top: 8%;
+    bottom: 8%;
+    flex-direction: column;
+    align-items: center;
+}
+
+.star-border-left {
+    left: 0.8%;
+}
+
+.star-border-right {
+    right: 0.8%;
+}
+
+/* =========================================================
+   MAIN APP FRAME AND WORKSPACE
+   ========================================================= */
+
+/* Outer frame around the sidebar and current page content. */
+.app-frame {
+    position: relative;
+    z-index: 1;
+    display: flex;
+    gap: 0;
+    width: 100%;
+    max-width: 1500px;
+    min-height: 82vh;
+    padding: 1.2%;
+    border: clamp(8px, 1.3vw, 17px) solid var(--pink);
+    border-radius: 24px;
+    background: rgba(255, 255, 255, 0.15);
+}
+
+/* Main content area; the layered gradients create the pastel wash. */
+.workspace {
+    display: grid;
+    place-items: center;
+    flex: 1;
+    min-width: 0;
+    min-height: 76vh;
+    border-radius: 0 3px 3px 0;
+    background:
+        radial-gradient(
+            ellipse at 23% 23%,
+            rgba(239, 181, 195, 0.88),
+            transparent 28%
+        ),
+        radial-gradient(
+            ellipse at 48% 40%,
+            rgba(244, 248, 210, 0.95),
+            transparent 36%
+        ),
+        radial-gradient(
+            ellipse at 77% 75%,
+            rgba(198, 233, 221, 0.92),
+            transparent 48%
+        ),
+        linear-gradient(
+            115deg,
+            #f0d2d3 0%,
+            #f2e4dd 42%,
+            #cde9e1 100%
+        );
+}
+
+/* Authentication pages use a simpler frame without inner padding. */
+.auth-frame {
+    padding: 0;
+}
+
+.auth-frame .workspace {
+    border-radius: 0;
+}
+
+/* =========================================================
+   SIDEBAR AND NAVIGATION
+   ========================================================= */
+
+/* Tall blue navigation bar beside the workspace. */
+.sidebar {
+    display: flex;
+    flex: 0 0 clamp(72px, 8.5vw, 112px);
+    flex-direction: column;
+    align-items: center;
+    justify-content: space-around;
+    width: clamp(72px, 8.5vw, 112px);
+    min-height: 76vh;
+    padding: 18px 7px;
+    border-radius: 55px;
+    background: var(--blue);
+}
+
+/* Circular profile image button. */
+.profile-button {
+    width: clamp(54px, 5.3vw, 68px);
+    aspect-ratio: 1;
+    padding: 0;
+    overflow: hidden;
+    border: 2px solid #f7e9dc;
+    border-radius: 50%;
+    background: var(--pink);
+}
+
+.profile-button img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+/* Shared button appearance for sidebar navigation items. */
+.nav-button {
+    display: grid;
+    place-items: center;
+    padding: 5px;
+    border: 0;
+    border-radius: 18px;
+    background: transparent;
+    color: var(--pink);
+}
+
+.nav-button.active {
+    background: rgba(255, 255, 255, 0.36);
+}
+
+
+/* Base sizing for PNG icons in the sidebar. */
+.nav-button img {
+    display: block;
+    width: clamp(38px, 4.5vw, 58px);
+    height: 48px;
+    object-fit: contain;
+}
+
+/* Search icon. */
+.nav-button .search-icon {
+    width: clamp(38px, 4.5vw, 58px);
+}
+
+/* Messages icon. */
+.nav-button .chat-icon {
+    width: clamp(46px, 5.5vw, 68px);
+}
+
+/* Saved-pets icon. */
+.nav-button .bookmark-icon {
+    width: clamp(40px, 4.5vw, 58px);
+}
+
+/* Paw icon in the sidebar. */
+.sidebar-paw {
+    width: 76%;
+}
+
+.sidebar-paw .paw {
+    width: 100%;
+    height: auto;
+    object-fit: contain;
+}
+
+/* =========================================================
+   SHARED BUTTONS, FORMS, AND TEXT
+   ========================================================= */
+
+/* Shared appearance for primary action buttons. */
+.primary-button {
+    padding: 11px 22px;
+    border: 0;
+    border-radius: 13px;
+    background: var(--pink);
+    color: white;
+    font-weight: 700;
+    box-shadow: 0 3px 0 rgba(151, 66, 102, 0.12);
+    transition: transform 0.15s, filter 0.15s;
+}
+
+.primary-button:hover {
+    filter: brightness(1.04);
+    transform: translateY(-1px);
+}
+
+/* Shared form labels used by login/signup and pet-name fields. */
+.auth-form label,
+.pet-name-label {
+    display: flex;
+    flex-direction: column;
+    gap: 5px;
+    color: var(--pink);
+    font-family: 'Courier New', monospace;
+    font-size: 14px;
+}
+
+/* Shared input styling prevents fields from looking different across forms. */
+.auth-form input,
+.pet-name-label input {
+    width: 100%;
+    height: 39px;
+    padding: 8px 12px;
+    border: 1px solid #d4caca;
+    border-radius: 10px;
+    outline-color: var(--pink);
+    background: #eeece9;
+    color: var(--ink);
+}
+
+/* =========================================================
+   LOGIN AND SIGNUP PAGES
+   ========================================================= */
+
+.auth-panel {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    width: min(90%, 460px);
+    padding: 30px 18px;
+    color: var(--pink);
+    text-align: center;
+}
+
+/* Dog logo used on the authentication and simple pages. */
+.dog-logo {
+    display: block;
+    width: clamp(130px, 17vw, 190px);
+    height: auto;
+    object-fit: contain;
+    mix-blend-mode: multiply;
+}
+
+.login-logo {
+    width: clamp(150px, 19vw, 190px);
+    margin-bottom: 14px;
+    padding: 9px 12px;
+    border-radius: 12px;
+    background: var(--pale-pink);
+}
+
+/* Main heading on the welcome/login screen. */
+.welcome-title {
+    margin: 0 0 26px;
+    padding: 0;
+    background: transparent;
+    color: var(--pink);
+    font-family: 'Courier New', monospace;
+    font-size: clamp(27px, 4.4vw, 46px);
+    font-weight: 900;
+    line-height: 1.25;
+    letter-spacing: -1.5px;
+}
+
+.auth-form {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    width: min(100%, 320px);
+    text-align: left;
+}
+
+.auth-form .primary-button {
+    margin-top: 6px;
+}
+
+/* Link-style button for switching between login and signup. */
+.auth-switch {
+    margin: 26px 0 0;
+    font-size: 15px;
+    line-height: 1.5;
+}
+
+.auth-switch button {
+    padding: 0;
+    border: 0;
+    background: none;
+    color: var(--pink);
+    font-weight: 700;
+    text-decoration: underline;
+}
+
+/* =========================================================
+   PET BROWSING AND SEARCH
+   ========================================================= */
+
+/* Flexible layout allows the heading and pet card to wrap on smaller screens. */
+.browse-layout {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: center;
+    gap: clamp(22px, 4vw, 58px);
+    width: 100%;
+    min-height: 76vh;
+    padding: 28px;
+}
+
+.browse-heading {
+    width: min(280px, 100%);
+    color: var(--pink);
+}
+
+.browse-heading h2,
+.simple-panel h2 {
+    margin: 0 0 9px;
+    font-family: 'Courier New', monospace;
+    font-size: clamp(25px, 3vw, 37px);
+    line-height: 1.2;
+}
+
+.browse-heading p {
+    margin: 0 0 22px;
+    color: #a85c7a;
+}
+
+/* Search input and icon share one rounded container. */
+.search-field {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    width: 100%;
+    padding: 9px 12px;
+    border: 1px solid rgba(215, 114, 151, 0.35);
+    border-radius: 14px;
+    background: rgba(255, 255, 255, 0.55);
+}
+
+/* PNG search icon inside the search field. */
+.search-field .search-icon {
+    width: 24px;
+    height: 24px;
+    flex: 0 0 auto;
+    object-fit: contain;
+}
+
+
+.search-field input {
+    width: 100%;
+    min-width: 0;
+    border: 0;
+    outline: 0;
+    background: transparent;
+    color: var(--ink);
+    font-size: 14px;
+}
+
+/* =========================================================
+   PET CARD
+   ========================================================= */
+
+.pet-card {
+    width: min(360px, 100%);
+    padding: 18px 20px 15px;
+    border: clamp(12px, 1.5vw, 20px) solid #b8e0e2;
+    border-radius: 22px;
+    background: #fff;
+    box-shadow: 0 8px 24px rgba(142, 93, 117, 0.08);
+}
+
+/* Colored frame behind each pet photo. */
+.pet-photo-wrap {
+    position: relative;
+    padding: 20px 18px;
+    border-radius: 3px;
+    background: var(--outer-pink);
+}
+
+.pet-photo {
+    display: block;
+    width: 100%;
+    height: clamp(135px, 18vw, 190px);
+    border: 5px solid var(--pink);
+    border-radius: 3px;
+    object-fit: cover;
+}
+
+/* Decorative stars sit on top of the photo but do not block clicks. */
+.photo-stars {
+    position: absolute;
+    inset: 5px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    pointer-events: none;
+}
+
+.photo-stars .star {
+    width: 10px;
+}
+
+.pet-info {
+    padding: 6px 0 0;
+}
+
+.eyebrow {
+    margin: 0 0 0 8px;
+    font-size: 10px;
+}
+
+.pet-info h3 {
+    margin: 0 0 4px;
+    font-size: 20px;
+    text-decoration: underline;
+}
+
+.location {
+    margin: 0 0 12px;
+    font-size: 13px;
+    text-decoration: underline;
+}
+
+/* Pet age, breed, or other short details. */
+.pet-stats {
+    display: flex;
+    justify-content: space-around;
+    gap: 6px;
+    padding: 11px 6px;
+    border: 1px solid #d4d1d1;
+    border-radius: 12px;
+    background: #f0efee;
+    font-size: 14px;
+    font-weight: 700;
+}
+
+.pet-stats span + span {
+    padding-left: 12px;
+    border-left: 1px solid #aaa;
+}
+
+.pet-description {
+    margin: 14px 0;
+    padding: 12px;
+    border: 1px solid #d4d1d1;
+    border-radius: 12px;
+    background: #f0efee;
+    font-size: 12px;
+    line-height: 1.18;
+}
+
+/* Save button fills the card width; saved state uses a blue-green color. */
+.save-button {
+    width: 100%;
+}
+
+.save-button.is-saved {
+    background: #a7d9dc;
+    color: #31575a;
+}
+
+/* Small messages shown after actions or when a list is empty. */
+.notice {
+    margin: 9px 0 0;
+    color: #a34e72;
+    font-size: 13px;
+    text-align: center;
+}
+
+.empty-state {
+    max-width: 360px;
+    padding: 22px;
+    border-radius: 15px;
+    background: rgba(255, 255, 255, 0.5);
+    color: #a85c7a;
+    line-height: 1.5;
+    text-align: center;
+}
+
+/* =========================================================
+   PET UPLOAD PAGE
+   ========================================================= */
+
+.upload-panel {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
+    width: 100%;
+    padding: 32px 20px;
+}
+
+.upload-panel h1 {
+    margin: 0 0 2px;
+    padding: 8px 12px 12px;
+    border-radius: 13px;
+    background: var(--pale-pink);
+    color: var(--pink);
+    font-family: 'Courier New', monospace;
+    font-size: clamp(25px, 4.5vw, 56px);
+    font-weight: 800;
+    letter-spacing: -2px;
+    text-align: center;
+}
+
+.pet-name-label {
+    width: min(250px, 90%);
+    margin: 6px 0;
+}
+
+/* Hide the default file input; the styled label/button triggers it. */
+.file-input {
+    display: none;
+}
+
+/* Large clickable area for selecting a pet photo. */
+.upload-button { /* fixed image size issue*/
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 16px;
+
+    width: clamp(150px, 19.5vw, 250px);
+    min-height: 100px;
+    height: auto;
+    box-sizing: border-box;
+    padding: 16px;
+
+    border: 0;
+    border-radius: 12px;
+    background: #cce8df;
+
+    cursor: pointer;
+    transition: transform 0.15s, filter 0.15s;
+}
+
+/* Inner rectangle gives the upload button a layered look. */
+.upload-button::before {
+    position: absolute;
+    inset: 8px;
+    z-index: 0;
+
+    border-radius: 7px;
+    background: #b6dfe1;
+    content: '';
+    pointer-events: none;
+}
+
+.upload-button:hover {
+    filter: brightness(1.02);
+    transform: translateY(-2px);
+}
+
+/* PNG paw icon inside the upload button. */
+.upload-button .paw {
+    position: relative;
+    z-index: 1;
+    width: clamp(48px, 6.5vw, 78px);
+    height: 70px;
+    object-fit: contain;
+}
+
+.preview-image {
+    position: relative;
+    z-index: 1;
+
+    display: block;
+    width: 100%;
+    max-width: 220px;
+    height: auto;
+    max-height: 280px;
+
+    object-fit: contain;
+    border-radius: 8px;
+}
+
+.upload-hint {
+    margin: 0;
+    color: #a85c7a;
+    font-size: 13px;
+    text-align: center;
+}
+
+/* =========================================================
+   SIMPLE / INFORMATIONAL PAGES
+   ========================================================= */
+
+.simple-panel {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 16px;
+    max-width: 430px;
+    padding: 30px;
+    color: var(--pink);
+    text-align: center;
+}
+
+.simple-panel .dog-logo {
+    width: 145px;
+}
+
+.simple-panel p {
+    margin: 0;
+    line-height: 1.5;
+}
+
+.soft-note {
+    color: #a85c7a;
+    font-size: 14px;
+}
+
+/*:root {
   --text: #6b6375;
   --text-h: #08060d;
   --bg: #fff;
@@ -108,4 +796,323 @@ code {
   line-height: 135%;
   padding: 4px 8px;
   background: var(--code-bg);
+}
+*/
+
+
+/* =========================================================
+   BREED SEARCH FEED + IMAGE IDENTIFICATION UPDATES
+   ========================================================= */
+
+/* The browse page becomes a full-width feed instead of one large pet card. */
+.browse-layout {
+    display: block;
+    align-self: stretch;
+    width: 100%;
+    min-width: 0;
+    min-height: 76vh;
+    max-height: 76vh;
+    overflow: auto;
+    padding: clamp(18px, 2.5vw, 34px);
+}
+
+.browse-heading {
+    width: 100%;
+    margin: 0 0 22px;
+}
+
+.browse-heading .search-field {
+    width: min(100%, 560px);
+}
+
+.browse-heading > p {
+    margin-bottom: 16px;
+}
+
+.text-button {
+    margin-top: 10px;
+    padding: 0;
+    border: 0;
+    background: transparent;
+    color: #a34e72;
+    font-size: 13px;
+    text-decoration: underline;
+}
+
+.dog-grid {
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    align-items: stretch;
+    gap: 18px;
+    width: 100%;
+}
+
+.dog-grid .pet-card {
+    display: flex;
+    flex-direction: column;
+    width: 100%;
+    min-width: 0;
+    padding: 10px;
+    border-width: 8px;
+    border-radius: 16px;
+}
+
+.dog-grid .pet-photo-wrap {
+    padding: 8px;
+}
+
+.dog-grid .pet-photo {
+    height: clamp(105px, 11vw, 155px);
+    border-width: 3px;
+}
+
+.pet-photo-placeholder {
+    display: grid;
+    place-items: center;
+    background: #f0efee;
+    color: #a85c7a;
+    font-size: 12px;
+    text-align: center;
+}
+
+.dog-grid .pet-info {
+    display: flex;
+    flex: 1;
+    flex-direction: column;
+    min-width: 0;
+}
+
+.dog-grid .pet-info h3 {
+    overflow-wrap: anywhere;
+    font-size: clamp(15px, 1.25vw, 19px);
+}
+
+.dog-grid .pet-name,
+.dog-grid .location {
+    overflow-wrap: anywhere;
+    font-size: 12px;
+}
+
+.dog-grid .pet-name {
+    margin: 2px 0 5px;
+}
+
+.dog-grid .pet-stats {
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: 5px;
+    margin-top: 5px;
+    padding: 8px 4px;
+    font-size: 11px;
+}
+
+.dog-grid .pet-stats span + span {
+    padding-left: 6px;
+}
+
+.dog-grid .pet-description {
+    display: -webkit-box;
+    overflow: hidden;
+    -webkit-box-orient: vertical;
+    -webkit-line-clamp: 4;
+    margin: 9px 0;
+    padding: 8px;
+    font-size: 11px;
+}
+
+.dog-grid .save-button {
+    margin-top: auto;
+    padding: 9px 8px;
+    font-size: 12px;
+}
+
+.upload-description {
+    max-width: 390px;
+    color: #a85c7a;
+    line-height: 1.5;
+    text-align: center;
+}
+
+.identify-button:disabled {
+    cursor: not-allowed;
+    opacity: 0.55;
+    transform: none;
+}
+
+.upload-error {
+    max-width: 460px;
+    color: #a12c43;
+    line-height: 1.45;
+}
+
+@media (max-width: 1100px) {
+    .dog-grid {
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+    }
+}
+
+@media (max-width: 800px) {
+    .dog-grid {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+
+    .browse-layout {
+        max-height: none;
+        overflow: visible;
+    }
+
+    .workspace {
+        align-items: stretch;
+    }
+}
+
+@media (max-width: 520px) {
+    .dog-grid {
+        grid-template-columns: minmax(0, 1fr);
+    }
+
+    .browse-layout {
+        padding: 16px;
+    }
+
+    .dog-grid .pet-photo {
+        height: 190px;
+    }
+}
+
+
+/* =========================================================
+   SEARCH PAGE — pastel reference mockup styling
+   ========================================================= */
+.browse-layout {
+    display: block;
+    min-height: 76vh;
+    max-height: 76vh;
+    overflow: auto;
+    padding: clamp(16px, 2vw, 28px);
+    scrollbar-color: #d9b9c5 rgba(255,255,255,.25);
+}
+.browse-heading {
+    width: 100%;
+    margin: 0 auto 12px;
+    color: var(--ink);
+    text-align: center;
+}
+.browse-heading .search-field {
+    display: flex;
+    width: min( min(100%, 450px), 42vw);
+    min-height: 42px;
+    margin: 0 auto 10px;
+    padding: 8px 16px;
+    border: 1px solid #cfc9c9;
+    border-radius: 12px;
+    background: rgba(245, 243, 237, .72);
+    box-shadow: inset 0 1px 2px rgba(0,0,0,.04);
+}
+.browse-heading .search-field .search-icon { display: none; }
+.browse-heading .search-field input {
+    text-align: center;
+    font-family: 'Courier New', monospace;
+    font-size: 17px;
+}
+.browse-heading .search-field input::placeholder { color: #8f898b; opacity: 1; }
+.browse-heading h2 {
+    margin: 0;
+    color: #171319;
+    font-family: 'Courier New', monospace;
+    font-size: clamp(19px, 2.2vw, 30px);
+    font-weight: 900;
+    line-height: 1.12;
+}
+.breed-heading-name { text-decoration: underline; text-underline-offset: 3px; }
+.browse-heading > p {
+    margin: 2px 0 10px;
+    color: #171319;
+    font-size: 14px;
+    font-weight: 700;
+}
+.dog-grid {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    align-items: stretch;
+    gap: 16px clamp(16px, 3.8vw, 52px);
+    width: 100%;
+    padding: 10px clamp(8px, 2.2vw, 28px) 20px;
+    border: 1px solid rgba(180, 165, 170, .55);
+    border-radius: 12px;
+    background: rgba(239, 234, 232, .43);
+}
+.dog-grid .pet-card {
+    display: flex;
+    flex-direction: column;
+    min-width: 0;
+    padding: 10px 10px 8px;
+    border: 10px solid var(--blue);
+    border-radius: 24px;
+    background: #fff;
+    box-shadow: none;
+}
+.dog-grid .pet-photo-wrap {
+    margin: 0 auto;
+    width: 100%;
+    padding: 7px;
+    border: 0;
+    border-radius: 0;
+    background: #fff;
+}
+.dog-grid .pet-photo {
+    height: clamp(90px, 9.3vw, 126px);
+    border: 5px dotted var(--pink);
+    outline: 2px solid #e6a0ba;
+    outline-offset: -8px;
+    border-radius: 2px;
+    background: #d9d9d9;
+    object-fit: cover;
+}
+.dog-grid .pet-info { padding: 0 5px 2px; }
+.dog-grid .pet-info .eyebrow { display: none; }
+.dog-grid .pet-info h3 {
+    margin: 0 0 1px;
+    font-size: 12px;
+    line-height: 1.1;
+}
+.dog-grid .pet-name, .dog-grid .location {
+    margin: 0;
+    font-size: 9px;
+    line-height: 1.15;
+}
+.dog-grid .pet-stats {
+    display: flex;
+    justify-content: center;
+    gap: 0;
+    margin-top: 5px;
+    padding: 5px 2px;
+    border: 1px solid #d0cfd0;
+    border-radius: 18px;
+    background: #f1f0f0;
+    font-size: 10px;
+    white-space: nowrap;
+}
+.dog-grid .pet-stats span + span {
+    margin-left: 7px;
+    padding-left: 7px;
+    border-left: 1px solid #777;
+}
+.dog-grid .pet-description { display: none; }
+.dog-grid .save-button {
+    margin-top: 6px;
+    padding: 5px 7px;
+    border-radius: 12px;
+    font-size: 10px;
+}
+@media (max-width: 900px) {
+    .dog-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; }
+    .browse-layout { max-height: none; overflow: visible; }
+    .browse-heading .search-field { width: min(100%, 450px); }
+    .dog-grid .pet-photo { height: clamp(110px, 22vw, 170px); }
+}
+@media (max-width: 560px) {
+    .dog-grid { grid-template-columns: minmax(0, 1fr); padding: 12px; }
+    .dog-grid .pet-photo { height: 190px; }
+    .browse-heading h2 { font-size: 20px; }
 }
