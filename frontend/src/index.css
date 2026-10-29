@@ -588,16 +588,24 @@ button {
 }
 
 /* Large clickable area for selecting a pet photo. */
-.upload-button {
+.upload-button { /* fixed image size issue*/
     position: relative;
-    display: grid;
-    place-items: center;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 16px;
+
     width: clamp(150px, 19.5vw, 250px);
-    height: clamp(78px, 11vw, 112px);
-    padding: 10px;
+    min-height: 100px;
+    height: auto;
+    box-sizing: border-box;
+    padding: 16px;
+
     border: 0;
-    border-radius: 8px;
+    border-radius: 12px;
     background: #cce8df;
+
     cursor: pointer;
     transition: transform 0.15s, filter 0.15s;
 }
@@ -605,12 +613,13 @@ button {
 /* Inner rectangle gives the upload button a layered look. */
 .upload-button::before {
     position: absolute;
+    inset: 8px;
     z-index: 0;
-    width: 86%;
-    height: 72%;
+
     border-radius: 7px;
     background: #b6dfe1;
     content: '';
+    pointer-events: none;
 }
 
 .upload-button:hover {
@@ -630,10 +639,15 @@ button {
 .preview-image {
     position: relative;
     z-index: 1;
+
+    display: block;
     width: 100%;
-    height: 100%;
-    border-radius: 5px;
+    max-width: 220px;
+    height: auto;
+    max-height: 280px;
+
     object-fit: contain;
+    border-radius: 8px;
 }
 
 .upload-hint {
@@ -784,3 +798,321 @@ code {
   background: var(--code-bg);
 }
 */
+
+
+/* =========================================================
+   BREED SEARCH FEED + IMAGE IDENTIFICATION UPDATES
+   ========================================================= */
+
+/* The browse page becomes a full-width feed instead of one large pet card. */
+.browse-layout {
+    display: block;
+    align-self: stretch;
+    width: 100%;
+    min-width: 0;
+    min-height: 76vh;
+    max-height: 76vh;
+    overflow: auto;
+    padding: clamp(18px, 2.5vw, 34px);
+}
+
+.browse-heading {
+    width: 100%;
+    margin: 0 0 22px;
+}
+
+.browse-heading .search-field {
+    width: min(100%, 560px);
+}
+
+.browse-heading > p {
+    margin-bottom: 16px;
+}
+
+.text-button {
+    margin-top: 10px;
+    padding: 0;
+    border: 0;
+    background: transparent;
+    color: #a34e72;
+    font-size: 13px;
+    text-decoration: underline;
+}
+
+.dog-grid {
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    align-items: stretch;
+    gap: 18px;
+    width: 100%;
+}
+
+.dog-grid .pet-card {
+    display: flex;
+    flex-direction: column;
+    width: 100%;
+    min-width: 0;
+    padding: 10px;
+    border-width: 8px;
+    border-radius: 16px;
+}
+
+.dog-grid .pet-photo-wrap {
+    padding: 8px;
+}
+
+.dog-grid .pet-photo {
+    height: clamp(105px, 11vw, 155px);
+    border-width: 3px;
+}
+
+.pet-photo-placeholder {
+    display: grid;
+    place-items: center;
+    background: #f0efee;
+    color: #a85c7a;
+    font-size: 12px;
+    text-align: center;
+}
+
+.dog-grid .pet-info {
+    display: flex;
+    flex: 1;
+    flex-direction: column;
+    min-width: 0;
+}
+
+.dog-grid .pet-info h3 {
+    overflow-wrap: anywhere;
+    font-size: clamp(15px, 1.25vw, 19px);
+}
+
+.dog-grid .pet-name,
+.dog-grid .location {
+    overflow-wrap: anywhere;
+    font-size: 12px;
+}
+
+.dog-grid .pet-name {
+    margin: 2px 0 5px;
+}
+
+.dog-grid .pet-stats {
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: 5px;
+    margin-top: 5px;
+    padding: 8px 4px;
+    font-size: 11px;
+}
+
+.dog-grid .pet-stats span + span {
+    padding-left: 6px;
+}
+
+.dog-grid .pet-description {
+    display: -webkit-box;
+    overflow: hidden;
+    -webkit-box-orient: vertical;
+    -webkit-line-clamp: 4;
+    margin: 9px 0;
+    padding: 8px;
+    font-size: 11px;
+}
+
+.dog-grid .save-button {
+    margin-top: auto;
+    padding: 9px 8px;
+    font-size: 12px;
+}
+
+.upload-description {
+    max-width: 390px;
+    color: #a85c7a;
+    line-height: 1.5;
+    text-align: center;
+}
+
+.identify-button:disabled {
+    cursor: not-allowed;
+    opacity: 0.55;
+    transform: none;
+}
+
+.upload-error {
+    max-width: 460px;
+    color: #a12c43;
+    line-height: 1.45;
+}
+
+@media (max-width: 1100px) {
+    .dog-grid {
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+    }
+}
+
+@media (max-width: 800px) {
+    .dog-grid {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+
+    .browse-layout {
+        max-height: none;
+        overflow: visible;
+    }
+
+    .workspace {
+        align-items: stretch;
+    }
+}
+
+@media (max-width: 520px) {
+    .dog-grid {
+        grid-template-columns: minmax(0, 1fr);
+    }
+
+    .browse-layout {
+        padding: 16px;
+    }
+
+    .dog-grid .pet-photo {
+        height: 190px;
+    }
+}
+
+
+/* =========================================================
+   SEARCH PAGE — pastel reference mockup styling
+   ========================================================= */
+.browse-layout {
+    display: block;
+    min-height: 76vh;
+    max-height: 76vh;
+    overflow: auto;
+    padding: clamp(16px, 2vw, 28px);
+    scrollbar-color: #d9b9c5 rgba(255,255,255,.25);
+}
+.browse-heading {
+    width: 100%;
+    margin: 0 auto 12px;
+    color: var(--ink);
+    text-align: center;
+}
+.browse-heading .search-field {
+    display: flex;
+    width: min( min(100%, 450px), 42vw);
+    min-height: 42px;
+    margin: 0 auto 10px;
+    padding: 8px 16px;
+    border: 1px solid #cfc9c9;
+    border-radius: 12px;
+    background: rgba(245, 243, 237, .72);
+    box-shadow: inset 0 1px 2px rgba(0,0,0,.04);
+}
+.browse-heading .search-field .search-icon { display: none; }
+.browse-heading .search-field input {
+    text-align: center;
+    font-family: 'Courier New', monospace;
+    font-size: 17px;
+}
+.browse-heading .search-field input::placeholder { color: #8f898b; opacity: 1; }
+.browse-heading h2 {
+    margin: 0;
+    color: #171319;
+    font-family: 'Courier New', monospace;
+    font-size: clamp(19px, 2.2vw, 30px);
+    font-weight: 900;
+    line-height: 1.12;
+}
+.breed-heading-name { text-decoration: underline; text-underline-offset: 3px; }
+.browse-heading > p {
+    margin: 2px 0 10px;
+    color: #171319;
+    font-size: 14px;
+    font-weight: 700;
+}
+.dog-grid {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    align-items: stretch;
+    gap: 16px clamp(16px, 3.8vw, 52px);
+    width: 100%;
+    padding: 10px clamp(8px, 2.2vw, 28px) 20px;
+    border: 1px solid rgba(180, 165, 170, .55);
+    border-radius: 12px;
+    background: rgba(239, 234, 232, .43);
+}
+.dog-grid .pet-card {
+    display: flex;
+    flex-direction: column;
+    min-width: 0;
+    padding: 10px 10px 8px;
+    border: 10px solid var(--blue);
+    border-radius: 24px;
+    background: #fff;
+    box-shadow: none;
+}
+.dog-grid .pet-photo-wrap {
+    margin: 0 auto;
+    width: 100%;
+    padding: 7px;
+    border: 0;
+    border-radius: 0;
+    background: #fff;
+}
+.dog-grid .pet-photo {
+    height: clamp(90px, 9.3vw, 126px);
+    border: 5px dotted var(--pink);
+    outline: 2px solid #e6a0ba;
+    outline-offset: -8px;
+    border-radius: 2px;
+    background: #d9d9d9;
+    object-fit: cover;
+}
+.dog-grid .pet-info { padding: 0 5px 2px; }
+.dog-grid .pet-info .eyebrow { display: none; }
+.dog-grid .pet-info h3 {
+    margin: 0 0 1px;
+    font-size: 12px;
+    line-height: 1.1;
+}
+.dog-grid .pet-name, .dog-grid .location {
+    margin: 0;
+    font-size: 9px;
+    line-height: 1.15;
+}
+.dog-grid .pet-stats {
+    display: flex;
+    justify-content: center;
+    gap: 0;
+    margin-top: 5px;
+    padding: 5px 2px;
+    border: 1px solid #d0cfd0;
+    border-radius: 18px;
+    background: #f1f0f0;
+    font-size: 10px;
+    white-space: nowrap;
+}
+.dog-grid .pet-stats span + span {
+    margin-left: 7px;
+    padding-left: 7px;
+    border-left: 1px solid #777;
+}
+.dog-grid .pet-description { display: none; }
+.dog-grid .save-button {
+    margin-top: 6px;
+    padding: 5px 7px;
+    border-radius: 12px;
+    font-size: 10px;
+}
+@media (max-width: 900px) {
+    .dog-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; }
+    .browse-layout { max-height: none; overflow: visible; }
+    .browse-heading .search-field { width: min(100%, 450px); }
+    .dog-grid .pet-photo { height: clamp(110px, 22vw, 170px); }
+}
+@media (max-width: 560px) {
+    .dog-grid { grid-template-columns: minmax(0, 1fr); padding: 12px; }
+    .dog-grid .pet-photo { height: 190px; }
+    .browse-heading h2 { font-size: 20px; }
+}

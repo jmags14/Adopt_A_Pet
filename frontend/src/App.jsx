@@ -1,122 +1,73 @@
-import { useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import './index.css';
 
-/* Example pet data for the browse and saved-pets pages. */
-const pets = [
-    {
-        name: 'Doki',
-        breed: 'Yorkshire Terrier',
-        location: 'Doral, FL (33178)',
-        age: 16,
-        weight: '4 lbs',
-        sex: 'Male',
-        image: '/src/assets/doki.jpg',
-        description:
-            "Doki is a sweet 16-year-old Yorkshire Terrier who makes a wonderful companion. Overall, he's calm and gentle around children, though he still surprises everyone with playful bursts when his favorite blue toys come out. He enjoys curling up under warm blankets and enjoying his favorite treat, ham. Because he tends to bark at men, he does best with patient introductions. As a senior dog, Doki does well with persistent coughing issues and relies on multiple medications to stay healthy. The perfect person placing Doki up for adoption should provide full details regarding his medical history and prescriptions so his new family can give him the dedicated care he deserves.",
-    },
-];
+// Set VITE_API_BASE_URL in frontend/.env if your backend runs at another address.
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:5000';
+const MAX_DOGS = 20;
 
-/* Decorative star used around the app frame and pet photos. */
+function getDogId(dog, index) {
+    return String(dog.id ?? dog._id ?? dog.dogId ?? `${dog.name ?? 'dog'}-${index}`);
+}
+
+function normalizeDog(dog, index) {
+    return {
+        id: getDogId(dog, index),
+        name: dog.name ?? dog.petName ?? 'Name unavailable',
+        breed: dog.breed ?? dog.breed_name ?? dog.predicted_breed ?? 'Breed unavailable',
+        location: dog.location ?? dog.address ?? 'Location unavailable',
+        age: dog.age ?? 'Age unavailable',
+        weight: dog.weight ?? 'Weight unavailable',
+        sex: dog.sex ?? dog.gender ?? 'Not specified',
+        image: dog.imageUrl ?? dog.image_url ?? dog.image ?? dog.photoUrl ?? dog.photo_url ?? '',
+        description: dog.description ?? dog.bio ?? '',
+    };
+}
+
 function Star() {
-    return (
-        <img
-            src={'/src/assets/star.png'}
-            className="star"
-            alt="Stars"
-            aria-hidden="true"
-        />
-    );
+    return <img src="/src/assets/star.png" className="star" alt="" aria-hidden="true" />;
 }
 
-/* Search icon. */
 function SearchIcon() {
-    return (
-        <img
-            src={'/src/assets/magnifying_glass.png'}
-            className="search-icon"
-            alt="Search Icon"
-            aria-hidden="true"
-        />
-    );
+    return <img src="/src/assets/magnifying_glass.png" className="search-icon" alt="" aria-hidden="true" />;
 }
 
-/* Messages icon. */
 function ChatIcon() {
-    return (
-        <img
-            src={'/src/assets/chat.png'}
-            className="chat-icon"
-            alt="Chat Icon"
-            aria-hidden="true"
-        />
-    );
+    return <img src="/src/assets/chat.png" className="chat-icon" alt="" aria-hidden="true" />;
 }
 
-/* Saved-pets icon. */
 function BookmarkIcon() {
-    return (
-        <img
-            src={'/src/assets/bookmark.png'}
-            className="bookmark-icon"
-            alt="Bookmark Icon"
-            aria-hidden="true"
-        />
-    );
+    return <img src="/src/assets/bookmark.png" className="bookmark-icon" alt="" aria-hidden="true" />;
 }
 
-/* Paw icon. */
 function PawIcon() {
-    return (
-        <img
-            src={'/src/assets/paw.png'}
-            className="paw"
-            alt="Paw Icon"
-            aria-hidden="true"
-        />
-    );
+    return <img src="/src/assets/paw.png" className="paw" alt="" aria-hidden="true" />;
 }
 
-/* Reusable decorative borders made from repeated star icons. */
 function StarBorder({ position, count }) {
     return (
-        <div
-            className={`star-border star-border-${position}`}
-            aria-hidden="true"
-        >
-            {Array.from({ length: count }, (_, index) => (
-                <Star key={index} />
-            ))}
+        <div className={`star-border star-border-${position}`} aria-hidden="true">
+            {Array.from({ length: count }, (_, index) => <Star key={index} />)}
         </div>
     );
 }
 
-/* Reusable sidebar shown after leaving the login screen. */
 function Sidebar({ page, onNavigate }) {
     const navigationItems = [
         { id: 'browse', label: 'Search pets', icon: <SearchIcon /> },
         { id: 'messages', label: 'Messages', icon: <ChatIcon /> },
         { id: 'saved', label: 'Saved pets', icon: <BookmarkIcon /> },
-        { id: 'upload', label: 'Upload a pet', icon: <PawIcon />, extraClass: 'sidebar-paw' },
+        { id: 'upload', label: 'Identify a breed', icon: <PawIcon />, extraClass: 'sidebar-paw' },
     ];
 
     return (
         <aside className="sidebar" aria-label="Main navigation">
-            <button
-                className="profile-button"
-                aria-label="Profile"
-                onClick={() => onNavigate('browse')}
-            >
+            <button className="profile-button" aria-label="Profile" onClick={() => onNavigate('browse')}>
                 <img src="/src/assets/doki.jpg" alt="Profile" />
             </button>
-
             {navigationItems.map((item) => (
                 <button
                     key={item.id}
-                    className={[
-                        'nav-button',
-                        item.extraClass || '',
-                        page === item.id ? 'active' : '',
-                    ].filter(Boolean).join(' ')}
+                    className={['nav-button', item.extraClass || '', page === item.id ? 'active' : ''].filter(Boolean).join(' ')}
                     aria-label={item.label}
                     aria-current={page === item.id ? 'page' : undefined}
                     onClick={() => onNavigate(item.id)}
@@ -128,69 +79,39 @@ function Sidebar({ page, onNavigate }) {
     );
 }
 
-/* Login and sign-up form */
 function AuthPanel({ signup, onToggleSignup, onSubmit }) {
     return (
         <section className="auth-panel">
-            <img
-                className="dog-logo login-logo"
-                src="\src\assets\full_logo.png" /* WHY IS THIS A NIGHTMARE p.s. i just fixed it :D*/
-                alt="Dog face logo"
-            />
-
+            <img className="dog-logo login-logo" src="/src/assets/full_logo.png" alt="Adopt-A-Pet logo" />
             <h1 className="welcome-title">
-                {signup ? ( // if signup
-                    'Join our pack!'
-                ) : ( // otherwise (main page)
-                    <>
-                        Welcome to
-                        <br />
-                        Adopt-A-Pet
-                    </>
-                )}
+                {signup ? 'Join our pack!' : <>Welcome to<br />Adopt-A-Pet</>}
             </h1>
-
             <form className="auth-form" onSubmit={onSubmit}>
-                <label> 
-                    username: 
+                <label>
+                    username:
                     <input required autoComplete="username" />
                 </label>
-
                 <label>
                     password:
-                    <input
-                        required
-                        type="password"
-                        autoComplete={signup ? 'new-password' : 'current-password'}
-                    />
+                    <input required type="password" autoComplete={signup ? 'new-password' : 'current-password'} />
                 </label>
-
                 {signup && (
                     <label>
                         confirm password:
-                        <input required type="password" />
+                        <input required type="password" autoComplete="new-password" />
                     </label>
                 )}
-
-                <button className="primary-button" type="submit">
-                    {signup ? 'Create account' : 'Log in'}
-                </button>
+                <button className="primary-button" type="submit">{signup ? 'Create account' : 'Log in'}</button>
             </form>
-
             <p className="auth-switch">
-                {signup
-                    ? 'Already have an account?'
-                    : 'Don’t have an account?'}
+                {signup ? 'Already have an account?' : 'Don’t have an account?'}
                 <br />
-                <button type="button" onClick={onToggleSignup}>
-                    {signup ? 'Log in' : 'Sign up'}
-                </button>
+                <button type="button" onClick={onToggleSignup}>{signup ? 'Log in' : 'Sign up'}</button>
             </p>
         </section>
     );
 }
 
-/* Search field reused on both the browse and saved-pets pages. */
 function PetSearch({ query, onQueryChange }) {
     return (
         <label className="search-field">
@@ -198,125 +119,105 @@ function PetSearch({ query, onQueryChange }) {
             <input
                 value={query}
                 onChange={(event) => onQueryChange(event.target.value)}
-                placeholder="Search pets or breeds..."
+                placeholder="Type to search..."
+                aria-label="Search by dog breed"
             />
         </label>
     );
 }
 
-/* Card containing one pet's photo, details, and save button. */
-function PetCard({ pet, saved, notice, onToggleSaved }) {
+function PetCard({ pet, saved, onToggleSaved }) {
     return (
         <article className="pet-card">
             <div className="pet-photo-wrap">
-                <img
-                    className="pet-photo"
-                    src={pet.image}
-                    alt={`${pet.name}, a ${pet.breed}`}
-                />
-
+                {pet.image ? (
+                    <img className="pet-photo" src={pet.image} alt={`${pet.breed} dog`} />
+                ) : (
+                    <div className="pet-photo pet-photo-placeholder">Photo unavailable</div>
+                )}
             </div>
-
             <div className="pet-info">
-                <p className="eyebrow">HI, I'M</p>
-                <h3>{pet.name}</h3>
+                <p className="eyebrow">BREED</p>
+                <h3>{pet.breed}</h3>
+                <p className="pet-name">Name: {pet.name}</p>
                 <p className="location">@ {pet.location}</p>
-
                 <div className="pet-stats">
                     <span>{pet.sex}</span>
                     <span>{pet.age}</span>
                     <span>{pet.weight}</span>
                 </div>
-
-                <p className="pet-description">{pet.description}</p>
-
-                <button
-                    className={`primary-button save-button ${saved ? 'is-saved' : ''}`}
-                    onClick={onToggleSaved}
-                >
-                    {saved ? '♥ Saved' : `♡ Save ${pet.name}`}
+                {pet.description && <p className="pet-description">{pet.description}</p>}
+                <button className={`primary-button save-button ${saved ? 'is-saved' : ''}`} onClick={() => onToggleSaved(pet)}>
+                    {saved ? '♥ Saved' : '♡ Save pet'}
                 </button>
-
-                {notice && <p className="notice">{notice}</p>}
             </div>
         </article>
     );
 }
 
-/* Browse and saved-pets pages share the same search and pet card layout. */
-function BrowsePage({ page, query, onQueryChange, saved, notice, onToggleSaved }) {
-    const pet = pets[0];
+function BrowsePage({
+    page, dogs, dogsLoading, dogsError, query, onQueryChange, savedIds, onToggleSaved,
+}) {
     const normalizedQuery = query.trim().toLowerCase();
-    const matchesPet =
-        !normalizedQuery ||
-        `${pet.name} ${pet.breed} dog`.toLowerCase().includes(normalizedQuery);
-
-    const showPet =
-        page === 'browse'
-            ? matchesPet
-            : saved;
+    const baseDogs = page === 'saved' ? dogs.filter((dog) => savedIds.includes(dog.id)) : dogs;
+    // Deliberately search only the breed field, never the dog's name.
+    const filteredDogs = baseDogs
+        .filter((dog) => !normalizedQuery || dog.breed.toLowerCase().includes(normalizedQuery))
+        .slice(0, MAX_DOGS);
 
     return (
         <section className="browse-layout">
             <div className="browse-heading">
-                <h2>{page === 'saved' ? 'Your saved pets' : 'Find your new best friend'}</h2>
-                <p>A little love, one paw at a time.</p>
                 <PetSearch query={query} onQueryChange={onQueryChange} />
+                <h2>
+                    {page === 'saved'
+                        ? 'Your saved pets'
+                        : <>Now seeing all our <span className="breed-heading-name">{query.trim() || 'available dogs'}</span> here</>}
+                </h2>
+                <p>{page === 'saved' ? 'Click to see all info' : 'Click to see all info'}</p>
+                {page === 'browse' && query && (
+                    <button className="text-button" type="button" onClick={() => onQueryChange('')}>Show all breeds</button>
+                )}
             </div>
 
-            {showPet && (
-                <PetCard
-                    pet={pet}
-                    saved={saved}
-                    notice={notice}
-                    onToggleSaved={onToggleSaved}
-                />
-            )}
-
-            {page === 'saved' && !saved && (
-                <p className="empty-state">
-                    You haven't saved any pets yet. Tap “Save Doki” when you find a furry friend you love!
+            {dogsLoading && <p className="empty-state">Loading available dogs…</p>}
+            {!dogsLoading && dogsError && (
+                <p className="empty-state" role="alert">
+                    {dogsError}
+                    <br />
+                    <small>Check that the backend is running and provides GET /api/dogs.</small>
                 </p>
             )}
-
-            {page === 'browse' && normalizedQuery && !matchesPet && (
+            {!dogsLoading && !dogsError && filteredDogs.length > 0 && (
+                <div className="dog-grid">
+                    {filteredDogs.map((pet) => (
+                        <PetCard
+                            key={pet.id}
+                            pet={pet}
+                            saved={savedIds.includes(pet.id)}
+                            onToggleSaved={onToggleSaved}
+                        />
+                    ))}
+                </div>
+            )}
+            {!dogsLoading && !dogsError && filteredDogs.length === 0 && (
                 <p className="empty-state">
-                    No pets match “{query}” yet. Try searching “Doki” or “Yorkshire Terrier”.
+                    {page === 'saved' && savedIds.length === 0
+                        ? 'You have not saved any dogs yet.'
+                        : normalizedQuery
+                            ? `No available dogs match the breed “${query}”.`
+                            : 'No dogs are available to display right now.'}
                 </p>
             )}
         </section>
     );
 }
 
-/* Pet image picker. The selected image is previewed locally in the browser. */
-function UploadPage({
-    petName,
-    onPetNameChange,
-    petImage,
-    onImageChange,
-    fileInputRef,
-    notice,
-    onContinue,
-}) {
+function UploadPage({ selectedFile, previewUrl, onImageChange, fileInputRef, onIdentify, identifying, notice, error }) {
     return (
         <section className="upload-panel">
-            <h1>Upload pet image</h1>
-
-            <img
-                className="dog-logo"
-                src="/src/assets/dog-logo.png"
-                alt="Cute dog face logo"
-            />
-
-            <label className="pet-name-label">
-                Pet's name
-                <input
-                    value={petName}
-                    onChange={(event) => onPetNameChange(event.target.value)}
-                    placeholder="e.g. Mochi"
-                />
-            </label>
-
+            <h1>Identify a dog breed</h1>
+            <p className="upload-description">Upload a photo and we’ll look for dogs of the same breed.</p>
             <input
                 ref={fileInputRef}
                 className="file-input"
@@ -324,128 +225,196 @@ function UploadPage({
                 accept="image/*"
                 onChange={onImageChange}
             />
-
             <button
                 className="upload-button"
                 type="button"
                 onClick={() => fileInputRef.current?.click()}
-                aria-label="Choose a pet image"
+                aria-label="Choose a dog photo"
             >
-                {petImage ? (
-                    <img
-                        className="preview-image"
-                        src={petImage}
-                        alt="Selected pet"
-                    />
-                ) : (
-                    <PawIcon />
-                )}
+                {previewUrl ? <img className="preview-image" src={previewUrl} alt="Selected dog" /> : <PawIcon />}
             </button>
-
             <p className="upload-hint">
-                {petImage
-                    ? 'Looking adorable! Choose another photo anytime.'
-                    : 'Choose a photo of your furry friend'}
+                {selectedFile ? selectedFile.name : 'Choose a clear photo of a dog'}
             </p>
-
-            {petImage && (
-                <button className="primary-button" onClick={onContinue}>
-                    Continue
-                </button>
-            )}
-
-            {notice && <p className="notice">{notice}</p>}
+            <button
+                className="primary-button identify-button"
+                type="button"
+                onClick={onIdentify}
+                disabled={!selectedFile || identifying}
+            >
+                {identifying ? 'Identifying breed…' : 'Identify breed'}
+            </button>
+            {notice && <p className="notice" role="status">{notice}</p>}
+            {error && <p className="notice upload-error" role="alert">{error}</p>}
         </section>
     );
 }
 
-/* Placeholder page for messages until messaging is implemented. */
 function MessagesPage({ onExplorePets }) {
     return (
         <section className="simple-panel">
-            <img
-                className="dog-logo"
-                src="/src/assets/dog-logo.png"
-                alt="Dog face logo"
-            />
+            <img className="dog-logo" src="/src/assets/full_logo.png" alt="Dog face logo" />
             <h2>Messages</h2>
             <p>Your future furry friend is waiting to meet you!</p>
-            <p className="soft-note">
-                Messages with shelters and pet parents will appear here.
-            </p>
-            <button className="primary-button" onClick={onExplorePets}>
-                Explore pets
-            </button>
+            <p className="soft-note">Messages with shelters and pet parents will appear here.</p>
+            <button className="primary-button" onClick={onExplorePets}>Explore pets</button>
         </section>
     );
 }
 
-/* Main app component: stores page state and passes data to each page. */
+function extractBreed(result) {
+    // Supports common response shapes; adjust this to the ML team's final response contract.
+    const candidate =
+        result?.breed ??
+        result?.predicted_breed ??
+        result?.predictedBreed ??
+        result?.class_name ??
+        result?.className ??
+        result?.label ??
+        result?.prediction?.breed ??
+        result?.prediction?.label ??
+        (typeof result?.prediction === 'string' ? result.prediction : null) ??
+        (typeof result?.class === 'string' ? result.class : null);
+
+    if (typeof candidate === 'string') return candidate.trim();
+    if (candidate && typeof candidate === 'object') {
+        return String(candidate.name ?? candidate.label ?? '').trim();
+    }
+    return '';
+}
+
 export default function App() {
     const [page, setPage] = useState('login');
     const [signup, setSignup] = useState(false);
-    const [saved, setSaved] = useState(false);
-    const [petImage, setPetImage] = useState('');
-    const [petName, setPetName] = useState('');
+    const [selectedFile, setSelectedFile] = useState(null);
+    const [previewUrl, setPreviewUrl] = useState('');
     const [query, setQuery] = useState('');
-    const [notice, setNotice] = useState('');
-
+    const [savedIds, setSavedIds] = useState([]);
+    const [dogs, setDogs] = useState([]);
+    const [dogsLoading, setDogsLoading] = useState(false);
+    const [dogsError, setDogsError] = useState('');
+    const [identifying, setIdentifying] = useState(false);
+    const [uploadNotice, setUploadNotice] = useState('');
+    const [uploadError, setUploadError] = useState('');
     const fileInput = useRef(null);
 
-    /* Change pages and clear any old feedback message. */
     function go(nextPage) {
         setPage(nextPage);
-        setNotice('');
+        setUploadNotice('');
+        setUploadError('');
     }
 
-    /* Accept image files and create a local preview URL. */
+    useEffect(() => {
+        let cancelled = false;
+
+        async function loadDogs() {
+            setDogsLoading(true);
+            setDogsError('');
+            try {
+                const response = await fetch(`${API_BASE_URL}/api/dogs`);
+                if (!response.ok) {
+                    throw new Error(`The dog-list request failed (${response.status}).`);
+                }
+                const payload = await response.json();
+                const rows = Array.isArray(payload)
+                    ? payload
+                    : payload.dogs ?? payload.results ?? payload.data ?? [];
+                if (!Array.isArray(rows)) {
+                    throw new Error('The dog-list endpoint did not return a list.');
+                }
+                if (!cancelled) setDogs(rows.slice(0, MAX_DOGS).map(normalizeDog));
+            } catch (error) {
+                if (!cancelled) {
+                    setDogsError(
+                        error instanceof TypeError
+                            ? `Could not connect to the backend at ${API_BASE_URL}.`
+                            : error.message || 'Could not load dogs from the backend.'
+                    );
+                }
+            } finally {
+                if (!cancelled) setDogsLoading(false);
+            }
+        }
+
+        loadDogs();
+        return () => { cancelled = true; };
+    }, []);
+
     function handleImageChange(event) {
         const file = event.target.files?.[0];
-
-        if (file && file.type.startsWith('image/')) {
-            setPetImage(URL.createObjectURL(file));
+        if (!file) return;
+        if (!file.type.startsWith('image/')) {
+            setUploadError('Please choose an image file.');
+            return;
         }
+        if (previewUrl) URL.revokeObjectURL(previewUrl);
+        setSelectedFile(file);
+        setPreviewUrl(URL.createObjectURL(file));
+        setUploadNotice('');
+        setUploadError('');
     }
 
-    /* Demo-only form submission: prevents reload and opens the browse page. */
     function handleAuthSubmit(event) {
         event.preventDefault();
         go('browse');
     }
 
-    /* Toggle the saved state and show feedback to the user. */
-    function handleToggleSaved() {
-        setSaved((wasSaved) => {
-            setNotice(
-                wasSaved
-                    ? 'Doki removed from saved pets.'
-                    : 'Doki added to your saved pets!'
-            );
-
-            return !wasSaved;
-        });
+    function handleToggleSaved(pet) {
+        setSavedIds((current) => (
+            current.includes(pet.id)
+                ? current.filter((id) => id !== pet.id)
+                : [...current, pet.id]
+        ));
     }
 
-    /* Show a confirmation message after the user continues from image selection. */
-    function handleUploadContinue() {
-        const name = petName.trim() || 'Your pet';
-        setNotice(`${name}'s photo is ready to add to a listing!`);
+    async function handleIdentify() {
+        if (!selectedFile || identifying) return;
+        setIdentifying(true);
+        setUploadNotice('');
+        setUploadError('');
+
+        try {
+            const formData = new FormData();
+            // Flask's existing /api/predict route requires the field name "image".
+            formData.append('image', selectedFile);
+            const response = await fetch(`${API_BASE_URL}/api/predict`, {
+                method: 'POST',
+                body: formData,
+            });
+            const result = await response.json().catch(() => ({}));
+
+            if (!response.ok) {
+                throw new Error(result.error || `Breed identification failed (${response.status}).`);
+            }
+
+            const breed = extractBreed(result);
+            if (!breed) {
+                throw new Error('The prediction endpoint responded, but no breed was found in its response. Ask the ML team which response field contains the predicted breed.');
+            }
+
+            setQuery(breed);
+            setPage('browse');
+            setUploadNotice('');
+        } catch (error) {
+            setUploadError(
+                error instanceof TypeError
+                    ? `Could not connect to the prediction service at ${API_BASE_URL}.`
+                    : error.message || 'Could not identify this breed.'
+            );
+        } finally {
+            setIdentifying(false);
+        }
     }
 
     return (
         <main className="page">
-            {/* Decorative stars around the app frame. */}
             <StarBorder position="top" count={15} />
             <StarBorder position="bottom" count={15} />
             <StarBorder position="left" count={8} />
             <StarBorder position="right" count={8} />
 
             <section className={`app-frame ${page === 'login' ? 'auth-frame' : ''}`}>
-                {/* The sidebar is hidden on the login and sign-up screen. */}
-                {page !== 'login' && (
-                    <Sidebar page={page} onNavigate={go} />
-                )}
-
+                {page !== 'login' && <Sidebar page={page} onNavigate={go} />}
                 <div className="workspace">
                     {page === 'login' && (
                         <AuthPanel
@@ -454,33 +423,31 @@ export default function App() {
                             onSubmit={handleAuthSubmit}
                         />
                     )}
-
                     {(page === 'browse' || page === 'saved') && (
                         <BrowsePage
                             page={page}
+                            dogs={dogs}
+                            dogsLoading={dogsLoading}
+                            dogsError={dogsError}
                             query={query}
                             onQueryChange={setQuery}
-                            saved={saved}
-                            notice={notice}
+                            savedIds={savedIds}
                             onToggleSaved={handleToggleSaved}
                         />
                     )}
-
                     {page === 'upload' && (
                         <UploadPage
-                            petName={petName}
-                            onPetNameChange={setPetName}
-                            petImage={petImage}
+                            selectedFile={selectedFile}
+                            previewUrl={previewUrl}
                             onImageChange={handleImageChange}
                             fileInputRef={fileInput}
-                            notice={notice}
-                            onContinue={handleUploadContinue}
+                            onIdentify={handleIdentify}
+                            identifying={identifying}
+                            notice={uploadNotice}
+                            error={uploadError}
                         />
                     )}
-
-                    {page === 'messages' && (
-                        <MessagesPage onExplorePets={() => go('browse')} />
-                    )}
+                    {page === 'messages' && <MessagesPage onExplorePets={() => go('browse')} />}
                 </div>
             </section>
         </main>
