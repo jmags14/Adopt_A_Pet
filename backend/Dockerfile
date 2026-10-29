@@ -6,5 +6,5 @@ COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 COPY . .
 EXPOSE 5000
-# --timeout 60: give the worker time to load the model on startup
-CMD ["gunicorn", "-b", "0.0.0.0:5000", "--timeout", "60", "--reload", "app:app"]
+# The FastAPI app hosts the existing backend routes and the local ML predictor.
+CMD ["uvicorn", "app:app", "--host", "0.0.0.0", "--port", "5000", "--reload"]

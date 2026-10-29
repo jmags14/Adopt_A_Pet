@@ -25,6 +25,7 @@ dist/
 *.pth
 *.h5
 *.keras
+!backend/ml/dog_breed_resnet50_weights.pth
 
 # OS
 .DS_Store
