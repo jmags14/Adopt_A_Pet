@@ -11,6 +11,10 @@ import jwt
 from functools import wraps
 from bson import ObjectId
 from PIL import Image, UnidentifiedImageError
+from fastapi import FastAPI, File, UploadFile
+from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import JSONResponse
+from starlette.middleware.wsgi import WSGIMiddleware
 
 from ml.mlmain import MOCK, predict_image  # dog breed model, loaded once when the backend starts
 
@@ -19,8 +23,8 @@ load_dotenv()  # FIX: loads backend/.env automatically (was "file.env")
 
 
 
-app = Flask(__name__)
-CORS(app)
+flask_api = Flask(__name__)
+CORS(flask_api)
 
 
 
@@ -52,7 +56,7 @@ def require_auth(f):
 
 
 
-@app.get("/api/health")
+@flask_api.get("/api/health")
 def health():
    """Checks Mongo and the ML model. If this returns all 'ok', Docker is wired correctly."""
    status = {"backend": "ok"}
@@ -72,7 +76,7 @@ def health():
 
 
 
-@app.post("/api/auth/signup")
+@flask_api.post("/api/auth/signup")
 def signup():
    data = request.get_json(silent=True) or {}
    email = (data.get("email") or "").strip().lower()
@@ -128,7 +132,7 @@ def signup():
 
 
 
-@app.post("/api/auth/login")
+@flask_api.post("/api/auth/login")
 def login():
    data = request.get_json(silent=True) or {}
    email = (data.get("email") or "").strip().lower()
@@ -191,7 +195,7 @@ def login():
 
 
 
-@app.get("/api/dogs")
+@flask_api.get("/api/dogs")
 def get_dogs():
     # 1. Read the filters send by react
     zip_code = request.args.get("zip", "").strip()
@@ -287,7 +291,7 @@ def get_dogs():
         search_data["filterProcessing"] = " AND ".join(conditions)
 
 
-   
+
 
 
     # 5. Search RescueGroups.
@@ -334,7 +338,7 @@ def get_dogs():
 
 
 
-@app.get("/api/dogs/<dog_id>")
+@flask_api.get("/api/dogs/<dog_id>")
 def get_dog_details(dog_id):
     # Check that the ID contains only digits.
     if not dog_id.isascii() or not dog_id.isdigit():
@@ -412,7 +416,7 @@ def favorite_to_json(fav):
 
 
 
-@app.get("/api/favorites")
+@flask_api.get("/api/favorites")
 @require_auth
 def get_favorites():
    favs = db.favorites.find({"userId": ObjectId(g.user_id)}).sort("savedAt", -1)
@@ -425,7 +429,7 @@ def get_favorites():
 
 
 
-@app.post("/api/favorites")
+@flask_api.post("/api/favorites")
 @require_auth
 def add_favorite():
    data = request.get_json(silent=True) or {}
@@ -473,7 +477,7 @@ def add_favorite():
 
 
 
-@app.delete("/api/favorites/<id>")
+@flask_api.delete("/api/favorites/<id>")
 @require_auth
 def remove_favorite(id):
    if not ObjectId.is_valid(id):
@@ -491,7 +495,7 @@ def remove_favorite(id):
 
 
 
-@app.get("/api/me")
+@flask_api.get("/api/me")
 @require_auth
 def get_my_profile():
     user = db.users.find_one(
@@ -512,7 +516,7 @@ def get_my_profile():
 
 
 
-@app.post("/api/predict")
+@flask_api.post("/api/predict")
 def predict():
    """Receives an image from React, runs the dog breed model (ml/mlmain.py) on it, returns the result."""
    if "image" not in request.files:
@@ -548,7 +552,35 @@ def predict():
 
 
 
-if __name__ == "__main__":
-   app.run(debug=True, port=5001)
+app = FastAPI(title="Adopt a Pet API")
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 
+
+@app.post("/api/predict")
+async def predict_with_fastapi(image: UploadFile = File(...)):
+    """Run the local ResNet50 model from the single FastAPI service."""
+    if not (image.content_type or "").startswith("image/"):
+        return JSONResponse({"error": "File uploaded is not an image"}, status_code=400)
+
+    try:
+        contents = await image.read()
+        from io import BytesIO
+
+        with Image.open(BytesIO(contents)) as opened:
+            opened.load()
+            result = predict_image(opened)
+    except (UnidentifiedImageError, OSError, ValueError):
+        return JSONResponse({"error": "File is not a readable image"}, status_code=400)
+
+    return JSONResponse(result)
+
+
+# Keep the existing auth, dog search, and favorites handlers in this file and
+# expose them through the same FastAPI process until they are migrated.
+app.mount("/", WSGIMiddleware(flask_api))
 

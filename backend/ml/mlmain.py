@@ -1,5 +1,4 @@
-"""Dog breed classifier. Runs inside the backend: backend/app.py imports predict_image()
-and serves it at POST /api/predict. The model is loaded ONCE when the backend starts, never per request."""
+"""ResNet50 dog breed classifier loaded once by the single backend API."""
 import json
 import os
 import torch
@@ -19,7 +18,7 @@ with open(CLASS_NAMES_PATH, "r") as f:
     class_names = json.load(f)
 
 # 3. Instantiate model matching your trained architecture
-model = models.resnet18(weights=None)
+model = models.resnet50(weights=None)
 num_ftrs = model.fc.in_features
 model.fc = nn.Linear(num_ftrs, len(class_names))
 
@@ -29,7 +28,7 @@ MOCK = not os.path.exists(WEIGHTS_PATH)
 if MOCK:
     print(f"WARNING: {WEIGHTS_PATH} not found. Running in MOCK mode.")
 else:
-    model.load_state_dict(torch.load(WEIGHTS_PATH, map_location=device))
+    model.load_state_dict(torch.load(WEIGHTS_PATH, map_location=device, weights_only=True))
 model = model.to(device)
 model.eval()
 
@@ -54,7 +53,7 @@ def predict_image(image):
         pred_idx = torch.argmax(probabilities, dim=1).item()
         confidence = probabilities[0][pred_idx].item() * 100
 
-    clean_breed = class_names[pred_idx].split("-")[-1].replace("_", " ")
+    clean_breed = class_names[pred_idx].split("-", 1)[1].replace("_", " ")
 
     # Schema format expected by the backend's /api/predict (backend/app.py) and MongoDB UploadedImage
     return {
