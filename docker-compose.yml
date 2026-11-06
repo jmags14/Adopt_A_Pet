@@ -25,9 +25,9 @@ services:
     ports:
       - "5173:5173"
     environment:
-      VITE_API_URL: http://localhost:5000
+      VITE_API_BASE_URL: http://localhost:5000
     volumes:
-      - ./frontend:/app               # live reload while you edit
+      - ./frontend:/app
       - /app/node_modules
     depends_on:
       - backend

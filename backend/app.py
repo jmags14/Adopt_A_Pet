@@ -218,37 +218,10 @@ def login():
    password = data.get("password") or ""
 
 
-
-
-
-
-
-
    user = db.users.find_one({"email" : email})
-
-
-
-
-
-
-
 
    if user is None:
        return jsonify({"error": "Invalid email or password"}), 401
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 
 
    if not bcrypt.checkpw(
@@ -316,6 +289,7 @@ def format_dog(animal, included):
         "id": str(animal.get("id", "")),
         "name": get_value("name") or "Name unavailable",
         "breed": breed,
+        "secondaryBreed": get_value("breedSecondary") or "",
         "location": location,
         "age": get_value("ageGroup") or "Unknown",
         "weight": get_value("sizeGroup") or "Unknown",
@@ -808,7 +782,7 @@ def predict():
 
 
     # This assumes your ML result uses the key "breed".
-    breed = prediction.get("breed")
+    breed = prediction.get("predictedBreed")
 
 
     if not isinstance(breed, str) or not breed.strip():

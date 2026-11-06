@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import './index.css';
 
 // Set VITE_API_BASE_URL in frontend/.env if your backend runs at another address.
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:5001';
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:5000';
 const MAX_DOGS = 20;
 
 function getDogId(dog, index) {
@@ -14,6 +14,7 @@ function normalizeDog(dog, index) {
         id: getDogId(dog, index),
         name: dog.name ?? dog.petName ?? 'Name unavailable',
         breed: dog.breed ?? dog.breed_name ?? dog.predicted_breed ?? 'Breed unavailable',
+        secondaryBreed: dog.secondaryBreed ?? '',
         location: dog.location ?? dog.address ?? 'Location unavailable',
         age: dog.age ?? 'Age unavailable',
         weight: dog.weight ?? 'Weight unavailable',
@@ -226,7 +227,11 @@ function BrowsePage({
     const baseDogs = page === 'saved' ? dogs.filter((dog) => savedIds.includes(dog.id)) : dogs;
     // Deliberately search only the breed field, never the dog's name.
     const filteredDogs = baseDogs
-        .filter((dog) => !normalizedQuery || dog.breed.toLowerCase().includes(normalizedQuery))
+        .filter((dog) =>
+            !normalizedQuery ||
+            dog.breed.toLowerCase().includes(normalizedQuery) ||
+            dog.secondaryBreed.toLowerCase().includes(normalizedQuery)
+        )
         .slice(0, MAX_DOGS);
 
     return (
@@ -429,7 +434,7 @@ export default function App() {
     }
 
     useEffect(() => {
-        if (page !== 'browse' || !/^\d{5}$/.test(zipCode)) {
+        if (page !== 'browse' || !/^\d{5}$/.test(zipCode) || query.trim()) {
             return;
         }
 
@@ -474,7 +479,7 @@ export default function App() {
 
         return () => controller.abort();
 
-    }, [page, zipCode, currentPage]);
+    }, [page, zipCode, currentPage, query]);
 
     function handleImageChange(event) {
         const file = event.target.files?.[0];
@@ -573,14 +578,18 @@ export default function App() {
                 throw new Error(result.error || `Breed identification failed (${response.status}).`);
             }
 
-            const breed = extractBreed(result);
+           const breed = extractBreed(result.prediction ?? result);
             if (!breed) {
                 throw new Error('The prediction endpoint responded, but no breed was found in its response. Ask the ML team which response field contains the predicted breed.');
             }
 
+            setDogs((result.dogs ?? []).map(normalizeDog));
+            setDogsLoading(false); // ADD THIS LINE
+            setDogsError('');
             setQuery(breed);
             setPage('browse');
             setUploadNotice('');
+
         } catch (error) {
             setUploadError(
                 error instanceof TypeError
