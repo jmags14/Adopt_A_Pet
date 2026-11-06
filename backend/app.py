@@ -26,15 +26,8 @@ load_dotenv(BASE_DIR / ".env")
 from email_validator import validate_email, EmailNotValidError
 from pymongo.errors import DuplicateKeyError
 
-
-
 app = Flask(__name__)
 CORS(app)
-
-
-
-
-
 
 client = MongoClient(os.environ["MONGO_URI"])
 db = client["adoptapet"]
@@ -42,10 +35,6 @@ db = client["adoptapet"]
 db.users.create_index("email", unique=True)
 
 JWT_SECRET = os.environ["JWT_SECRET_KEY"]
-
-
-
-
 
 
 def require_auth(f):
@@ -63,19 +52,6 @@ def require_auth(f):
        g.user_id = payload["sub"]
        return f(*args, **kwargs)
    return wrapper
-
-
-
-
-
-
-
-
-
-
-
-
-
 
 @app.get("/api/health")
 def health():
@@ -127,19 +103,6 @@ def coordinates_to_zip():
         return jsonify({"error": "Invalid coordinates"}), 400
     except requests.RequestException:
         return jsonify({"error": "Location lookup failed"}), 502
-
-
-
-
-
-
-
-
-
-
-
-
-
 
 
 
@@ -232,19 +195,6 @@ def login():
 
 
 
-
-
-
-
-
-
-
-
-
-
-
-
-
    # FIX: return a JWT (outline says login returns a JWT), built inline
    token = jwt.encode(
        {
@@ -274,16 +224,48 @@ def format_dog(animal, included):
     breed = get_value("breedPrimary", "breedSecondary") or "Unknown breed"
 
     photo = (
-        get_value("pictureThumbnailUrl")
-        or get_value("pictureUrl")
+        get_value("pictureUrl")
+        or get_value("pictureThumbnailUrl")
         or ""
     )
 
-    location = (
-        get_value("location")
-        or get_value("postalcode")
-        or "Location unavailable"
-    )
+    # Find the location associated with this dog.
+    location = ""
+
+    relationships = animal.get("relationships") or {}
+    location_data = (relationships.get("locations") or {}).get("data") or []
+
+    included_locations = {
+        str(item.get("id")): item.get("attributes") or {}
+        for item in included
+        if item.get("type") == "locations"
+    }
+
+    for item in location_data:
+        location_info = included_locations.get(str(item.get("id")), {})
+
+        city = location_info.get("city") or ""
+        state = location_info.get("state") or ""
+
+        if city and state:
+            location = f"{city}, {state}"
+        elif city:
+            location = city
+        elif state:
+            location = state
+        elif location_info.get("postalcode"):
+            location = location_info["postalcode"]
+
+        if location:
+            break
+
+    # Fall back to any location fields directly on the dog.
+    if not location:
+        location = (
+            get_value("location")
+            or get_value("postalcode")
+            or "Location unavailable"
+        )
 
     return {
         "id": str(animal.get("id", "")),
@@ -357,29 +339,22 @@ def search_dogs(params):
         }), 400
 
 
-
-
-
-
     # 4. Apply the breed filter only when one was selected.
     # Match either the primary or secondary breed.
     # Build the optional filters.
     filters = []
     conditions = []
 
-
-
-
     if breed:
         filters.extend([
             {
                 "fieldName": "animals.breedPrimary",
-                "operation": "equal",
+                "operation": "contains",
                 "criteria": breed
             },
             {
                 "fieldName": "animals.breedSecondary",
-                "operation": "equal",
+                "operation": "contains",
                 "criteria": breed
             }
         ])
@@ -415,13 +390,6 @@ def search_dogs(params):
         search_data["filterProcessing"] = " AND ".join(conditions)
 
 
-
-
-   
-
-
-
-
     # 5. Search RescueGroups.
     try:
         response = requests.post(
@@ -447,8 +415,6 @@ def search_dogs(params):
         result = response.json()
 
 
-
-
     except requests.exceptions.HTTPError as error:
         return jsonify({
             "error": "RescueGroups rejected the request",
@@ -457,20 +423,13 @@ def search_dogs(params):
     }),     502
 
 
-
-
     except requests.exceptions.RequestException as error:
         print("RescueGroups connection error:", str(error))
-
-
 
 
         return jsonify({"error": "Could not connect to RescueGroups"}), 502
     except ValueError:
         return jsonify({"error": "RescueGroups returned invalid data"}), 502
-
-
-
 
     included = result.get("included") or []
 
@@ -489,18 +448,11 @@ def search_dogs(params):
 
 
 
-
-
-
-
 @app.get("/api/dogs/<dog_id>")
 def get_dog_details(dog_id):
     # Check that the ID contains only digits.
     if not dog_id.isascii() or not dog_id.isdigit():
         return jsonify({"error": "Invalid dog ID"}), 400
-
-
-
 
     try:
         response = requests.get(
@@ -515,27 +467,14 @@ def get_dog_details(dog_id):
             },
             timeout=30
         )
-
-
-
-
         if response.status_code == 404:
             return jsonify({"error": "Dog listing not found"}), 404
-
-
-
 
         response.raise_for_status()
         result = response.json()
 
-
-
-
     except requests.exceptions.Timeout:
         return jsonify({"error": "RescueGroups took too long to respond"}), 504
-
-
-
 
     except requests.exceptions.HTTPError as error:
         return jsonify({
@@ -544,33 +483,17 @@ def get_dog_details(dog_id):
             "details": error.response.text
         }), 502
 
-
-
-
     except requests.exceptions.RequestException:
         return jsonify({"error": "Could not retrieve dog details"}), 502
-
-
-
 
     except ValueError:
         return jsonify({"error": "RescueGroups returned invalid data"}), 502
 
 
-
-
     if not result.get("data"):
         return jsonify({"error": "Dog listing not found"}), 404
 
-
-
-
     return jsonify(result), 200
-
-
-
-
-
 
 
 
@@ -588,37 +511,11 @@ def favorite_to_json(fav):
 
 
 
-
-
-
-
-
-
-
-
-
-
-
-
-
 @app.get("/api/favorites")
 @require_auth
 def get_favorites():
    favs = db.favorites.find({"userId": ObjectId(g.user_id)}).sort("savedAt", -1)
    return jsonify([favorite_to_json(f) for f in favs]), 200
-
-
-
-
-
-
-
-
-
-
-
-
-
 
 
 
@@ -631,39 +528,15 @@ def add_favorite():
 
 
 
-
-
-
-
-
    if not rescuegroup_id or not name:
        return jsonify({"error": "rescuegroupID and name are required"}), 400
 
 
-
-
-
-
-
-
    user_id = ObjectId(g.user_id)
-
-
-
-
-
-
-
 
    # don't let the same user save the same dog twice
    if db.favorites.find_one({"userId": user_id, "rescuegroupID": rescuegroup_id}):
        return jsonify({"error": "Already in favorites"}), 409
-
-
-
-
-
-
 
 
    favorite = {
@@ -681,19 +554,6 @@ def add_favorite():
 
 
 
-
-
-
-
-
-
-
-
-
-
-
-
-
 @app.delete("/api/favorites/<id>")
 @require_auth
 def remove_favorite(id):
@@ -702,21 +562,11 @@ def remove_favorite(id):
 
 
 
-
-
-
-
-
    # filtering by userId means you can only delete your own favorites
    result = db.favorites.delete_one({"_id": ObjectId(id), "userId": ObjectId(g.user_id)})
    if result.deleted_count == 0:
        return jsonify({"error": "Favorite not found"}), 404
    return jsonify({"message": "Removed"}), 200
-
-
-
-
-
 
 
 

@@ -456,7 +456,7 @@ button {
     height: clamp(135px, 18vw, 190px);
     border: 5px solid var(--pink);
     border-radius: 3px;
-    object-fit: cover;
+    object-fit: contain;
 }
 
 /* Decorative stars sit on top of the photo but do not block clicks. */
@@ -1115,4 +1115,190 @@ code {
     .dog-grid { grid-template-columns: minmax(0, 1fr); padding: 12px; }
     .dog-grid .pet-photo { height: 190px; }
     .browse-heading h2 { font-size: 20px; }
+}
+
+/* =========================================================
+   INDIVIDUAL DOG DETAILS POPUP
+   ========================================================= */
+.dog-grid .pet-card {
+    cursor: pointer;
+    transition: transform 0.16s ease, box-shadow 0.16s ease;
+}
+.dog-grid .pet-card:hover,
+.dog-grid .pet-card:focus-visible {
+    transform: translateY(-3px);
+    box-shadow: 0 8px 20px rgba(142, 93, 117, 0.16);
+    outline: 2px solid var(--pink);
+    outline-offset: 2px;
+}
+.dog-modal-backdrop {
+    position: fixed;
+    inset: 0;
+    z-index: 1000;
+    display: grid;
+    place-items: center;
+    padding: 20px;
+    overflow-y: auto;
+    background: rgba(55, 35, 46, 0.42);
+    backdrop-filter: blur(3px);
+}
+.dog-modal {
+    position: relative;
+    width: min(460px, 100%);
+    max-height: min(90vh, 900px);
+    overflow-y: auto;
+    padding: 24px 20px 20px;
+    border: 10px solid var(--blue);
+    border-radius: 23px;
+    background: #fff;
+    box-shadow: 0 16px 50px rgba(65, 39, 53, 0.24);
+}
+.dog-modal-close {
+    position: sticky;
+    top: 0;
+    z-index: 2;
+    display: grid;
+    place-items: center;
+    width: 34px;
+    height: 34px;
+    margin: -12px -8px 2px auto;
+    border: 0;
+    border-radius: 50%;
+    background: var(--pale-pink);
+    color: #8f4564;
+    font-size: 25px;
+    line-height: 1;
+}
+.dog-details-card {
+    width: 100%;
+    max-width: 340px;
+    margin: 0 auto;
+}
+.dog-details-photo-frame {
+    padding: 12px;
+    border: 7px dotted var(--pink);
+    border-radius: 5px;
+    background: var(--outer-pink);
+}
+.dog-details-photo {
+    display: block;
+    width: 100%;
+    height: clamp(190px, 32vh, 290px);
+    border: 4px solid var(--pink);
+    border-radius: 4px;
+    background: #eee;
+    object-fit: contain;
+}
+.dog-details-photo-placeholder {
+    display: grid;
+    place-items: center;
+    color: #a85c7a;
+    font-size: 14px;
+}
+.dog-details-info {
+    padding: 9px 0 0;
+    color: var(--ink);
+}
+.dog-details-intro {
+    margin: 0 0 1px;
+    font-size: 11px;
+}
+.dog-details-info h2 {
+    margin: 0;
+    font-family: 'Trebuchet MS', Arial, sans-serif;
+    font-size: 21px;
+    font-weight: 700;
+    text-decoration: underline;
+    text-underline-offset: 2px;
+}
+.dog-details-breed {
+    margin: 3px 0 5px;
+    color: #8f6576;
+    font-size: 12px;
+}
+.dog-details-location {
+    margin: 0 0 12px;
+    font-size: 13px;
+    text-decoration: underline;
+}
+.dog-details-stats {
+    display: flex;
+    justify-content: space-around;
+    gap: 8px;
+    margin-bottom: 13px;
+    padding: 11px 7px;
+    border: 1px solid #d4d1d1;
+    border-radius: 13px;
+    background: #f0efee;
+    font-size: 14px;
+    font-weight: 700;
+    text-align: center;
+}
+.dog-details-stats span + span {
+    padding-left: 10px;
+    border-left: 1px solid #aaa;
+}
+.dog-details-description {
+    max-height: 230px;
+    overflow-y: auto;
+    margin: 0 0 12px;
+    padding: 12px;
+    border: 1px solid #d4d1d1;
+    border-radius: 12px;
+    background: #f0efee;
+    font-size: 13px;
+    line-height: 1.25;
+    white-space: pre-line;
+}
+.dog-details-favorite {
+    display: block;
+    width: 100%;
+}
+@media (max-width: 520px) {
+    .dog-modal-backdrop { padding: 10px; }
+    .dog-modal { padding: 18px 14px 14px; border-width: 7px; }
+    .dog-details-photo { height: 220px; }
+    .dog-details-stats { font-size: 12px; }
+}
+
+/* ZIP code search styling */
+.zip-search {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin: 0 auto 14px;
+    color: var(--ink);
+    font-family: 'Courier New', monospace;
+    font-size: 13px;
+    font-weight: 700;
+}
+
+.zip-search label {
+    white-space: nowrap;
+}
+
+.zip-search input {
+    width: 125px;
+    height: 36px;
+    padding: 7px 12px;
+    border: 1px solid #cfc9c9;
+    border-radius: 12px;
+    outline-color: var(--pink);
+    background: rgba(245, 243, 237, 0.85);
+    color: var(--ink);
+    font-family: 'Courier New', monospace;
+    font-size: 14px;
+    text-align: center;
+}
+
+.zip-search input::placeholder {
+    color: #8f898b;
+    opacity: 1;
+}
+
+.zip-search input:focus {
+    border-color: var(--pink);
+    box-shadow: 0 0 0 2px rgba(223, 113, 151, 0.15);
 }
