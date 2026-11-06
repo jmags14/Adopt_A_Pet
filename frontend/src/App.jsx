@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import './index.css';
 
 // Set VITE_API_BASE_URL in frontend/.env if your backend runs at another address.
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:5000';
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:5001';
 const MAX_DOGS = 20;
 
 function getDogId(dog, index) {
@@ -82,32 +82,94 @@ function Sidebar({ page, onNavigate }) {
 function AuthPanel({ signup, onToggleSignup, onSubmit }) {
     return (
         <section className="auth-panel">
-            <img className="dog-logo login-logo" src="/src/assets/full_logo.png" alt="Adopt-A-Pet logo" />
+
+            <img
+                className="dog-logo login-logo"
+                src="/src/assets/full_logo.png"
+                alt="Adopt-A-Pet logo"
+            />
+
             <h1 className="welcome-title">
-                {signup ? 'Join our pack!' : <>Welcome to<br />Adopt-A-Pet</>}
+                {signup ? (
+                    'Join our pack!'
+                ) : (
+                    <>
+                        Welcome to<br />Adopt-A-Pet
+                    </>
+                )}
             </h1>
+
             <form className="auth-form" onSubmit={onSubmit}>
+
+                {/* EMAIL */}
                 <label>
-                    username:
-                    <input required autoComplete="username" />
+                    email:
+                    <input
+                        name="email"
+                        type="email"
+                        required
+                        autoComplete="email"
+                        placeholder="Enter your email"
+                    />
                 </label>
+
+                {/* PASSWORD */}
                 <label>
                     password:
-                    <input required type="password" autoComplete={signup ? 'new-password' : 'current-password'} />
+                    <input
+                        name="password"
+                        type="password"
+                        required
+                        minLength={8}
+                        autoComplete={
+                            signup ? 'new-password' : 'current-password'
+                        }
+                        placeholder="Enter your password"
+                    />
                 </label>
+
+                {/* CONFIRM PASSWORD - SIGNUP ONLY */}
                 {signup && (
                     <label>
                         confirm password:
-                        <input required type="password" autoComplete="new-password" />
+                        <input
+                            name="confirmPassword"
+                            type="password"
+                            required
+                            minLength={8}
+                            autoComplete="new-password"
+                            placeholder="Confirm your password"
+                        />
                     </label>
                 )}
-                <button className="primary-button" type="submit">{signup ? 'Create account' : 'Log in'}</button>
+
+                {/* SUBMIT BUTTON */}
+                <button
+                    className="primary-button"
+                    type="submit"
+                >
+                    {signup ? 'Create account' : 'Log in'}
+                </button>
+
             </form>
+
+            {/* SWITCH BETWEEN LOGIN AND SIGNUP */}
             <p className="auth-switch">
-                {signup ? 'Already have an account?' : 'Don’t have an account?'}
+                {signup
+                    ? 'Already have an account?'
+                    : "Don't have an account?"
+                }
+
                 <br />
-                <button type="button" onClick={onToggleSignup}>{signup ? 'Log in' : 'Sign up'}</button>
+
+                <button
+                    type="button"
+                    onClick={onToggleSignup}
+                >
+                    {signup ? 'Log in' : 'Sign up'}
+                </button>
             </p>
+
         </section>
     );
 }
@@ -156,7 +218,9 @@ function PetCard({ pet, saved, onToggleSaved }) {
 }
 
 function BrowsePage({
-    page, dogs, dogsLoading, dogsError, query, onQueryChange, savedIds, onToggleSaved,
+    page, dogs, dogsLoading, dogsError,
+    query, onQueryChange, savedIds, onToggleSaved,
+    zipCode, onZipCodeChange
 }) {
     const normalizedQuery = query.trim().toLowerCase();
     const baseDogs = page === 'saved' ? dogs.filter((dog) => savedIds.includes(dog.id)) : dogs;
@@ -167,6 +231,21 @@ function BrowsePage({
 
     return (
         <section className="browse-layout">
+        <div className="zip-search">
+            <label htmlFor="zip-code">Your ZIP code:</label>
+            <input
+                id="zip-code"
+                type="text"
+                inputMode="numeric"
+                maxLength={5}
+                value={zipCode}
+                placeholder="Enter ZIP code"
+                onChange={(event) => {
+                    const value = event.target.value.replace(/\D/g, '');
+                    onZipCodeChange(value);
+                }}
+            />
+        </div>
             <div className="browse-heading">
                 <PetSearch query={query} onQueryChange={onQueryChange} />
                 <h2>
@@ -286,6 +365,11 @@ function extractBreed(result) {
 export default function App() {
     const [page, setPage] = useState('login');
     const [signup, setSignup] = useState(false);
+
+    // User's location and dog search pagination
+    const [zipCode, setZipCode] = useState('');
+    const [currentPage, setCurrentPage] = useState(1);
+
     const [selectedFile, setSelectedFile] = useState(null);
     const [previewUrl, setPreviewUrl] = useState('');
     const [query, setQuery] = useState('');
@@ -298,6 +382,46 @@ export default function App() {
     const [uploadError, setUploadError] = useState('');
     const fileInput = useRef(null);
 
+    // REQUEST USER LOCATION
+    function requestUserLocation() {
+        if (!navigator.geolocation) {
+            alert('Please enter your ZIP code manually.');
+            return;
+        }
+
+        navigator.geolocation.getCurrentPosition(
+            async (position) => {
+                try {
+                    const { latitude, longitude } = position.coords;
+
+                    const params = new URLSearchParams({
+                        lat: String(latitude),
+                        lon: String(longitude)
+                    });
+
+                    const response = await fetch(
+                        `${API_BASE_URL}/api/location/zip?${params}`
+                    );
+
+                    const data = await response.json();
+
+                    if (!response.ok || !/^\d{5}$/.test(data.zip)) {
+                        throw new Error('ZIP lookup failed');
+                    }
+
+                    setZipCode(data.zip);
+                    setCurrentPage(1);
+
+                } catch (error) {
+                    alert('Could not determine your ZIP. Please enter it manually.');
+                }
+            },
+            () => {
+                alert('Please enter your ZIP code manually.');
+            }
+        );
+    }
+
     function go(nextPage) {
         setPage(nextPage);
         setUploadNotice('');
@@ -305,40 +429,52 @@ export default function App() {
     }
 
     useEffect(() => {
-        let cancelled = false;
+        if (page !== 'browse' || !/^\d{5}$/.test(zipCode)) {
+            return;
+        }
+
+        const controller = new AbortController();
 
         async function loadDogs() {
             setDogsLoading(true);
             setDogsError('');
+
             try {
-                const response = await fetch(`${API_BASE_URL}/api/dogs`);
+                const params = new URLSearchParams({
+                    zip: zipCode,
+                    radius: '50',
+                    page: String(currentPage)
+                });
+
+                const response = await fetch(
+                    `${API_BASE_URL}/api/dogs?${params}`,
+                    { signal: controller.signal }
+                );
+
+                const data = await response.json();
+
                 if (!response.ok) {
-                    throw new Error(`The dog-list request failed (${response.status}).`);
+                    throw new Error(data.error || 'Could not load dogs');
                 }
-                const payload = await response.json();
-                const rows = Array.isArray(payload)
-                    ? payload
-                    : payload.dogs ?? payload.results ?? payload.data ?? [];
-                if (!Array.isArray(rows)) {
-                    throw new Error('The dog-list endpoint did not return a list.');
-                }
-                if (!cancelled) setDogs(rows.slice(0, MAX_DOGS).map(normalizeDog));
+
+                setDogs((data.dogs ?? []).map(normalizeDog));
+
             } catch (error) {
-                if (!cancelled) {
-                    setDogsError(
-                        error instanceof TypeError
-                            ? `Could not connect to the backend at ${API_BASE_URL}.`
-                            : error.message || 'Could not load dogs from the backend.'
-                    );
+                if (error.name !== 'AbortError') {
+                    setDogsError(error.message);
                 }
             } finally {
-                if (!cancelled) setDogsLoading(false);
+                if (!controller.signal.aborted) {
+                    setDogsLoading(false);
+                }
             }
         }
 
         loadDogs();
-        return () => { cancelled = true; };
-    }, []);
+
+        return () => controller.abort();
+
+    }, [page, zipCode, currentPage]);
 
     function handleImageChange(event) {
         const file = event.target.files?.[0];
@@ -354,10 +490,57 @@ export default function App() {
         setUploadError('');
     }
 
-    function handleAuthSubmit(event) {
+    async function handleAuthSubmit(event) {
         event.preventDefault();
+
+        const form = event.currentTarget;
+        const email = form.elements.email.value.trim();
+        const password = form.elements.password.value;
+
+        if (signup) {
+            const confirm = form.elements.confirmPassword.value;
+
+            if (password !== confirm) {
+                alert('Passwords do not match');
+                return;
+            }
+
+            if (password.length < 8) {
+                alert('Password must be at least 8 characters');
+                return;
+            }
+        }
+
+        try {
+            const endpoint = signup ? 'signup' : 'login';
+
+            const response = await fetch(
+                `${API_BASE_URL}/api/auth/${endpoint}`,
+                {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({ email, password })
+                }
+            );
+
+            const data = await response.json();
+
+            if (!response.ok) {
+                throw new Error(data.error || 'Authentication failed');
+            }
+
+            sessionStorage.setItem('token', data.token);
+
+            requestUserLocation();
+
         go('browse');
+
+    } catch (error) {
+        alert(error.message);
     }
+}
 
     function handleToggleSaved(pet) {
         setSavedIds((current) => (
@@ -377,6 +560,9 @@ export default function App() {
             const formData = new FormData();
             // Flask's existing /api/predict route requires the field name "image".
             formData.append('image', selectedFile);
+            formData.append('zip', zipCode);
+            formData.append('radius', '50');
+            formData.append('page', '1');
             const response = await fetch(`${API_BASE_URL}/api/predict`, {
                 method: 'POST',
                 body: formData,
@@ -433,6 +619,11 @@ export default function App() {
                             onQueryChange={setQuery}
                             savedIds={savedIds}
                             onToggleSaved={handleToggleSaved}
+                            zipCode={zipCode}
+                            onZipCodeChange={(value) => {
+                                setZipCode(value);
+                                setCurrentPage(1);
+                                }}
                         />
                     )}
                     {page === 'upload' && (

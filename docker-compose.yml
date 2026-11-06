@@ -10,6 +10,7 @@ services:
 
   backend:
     build: ./backend                   # also runs the dog breed model (backend/ml/mlmain.py)
+    command: python -m flask --app app run --host 0.0.0.0 --port 5000 --debug
     ports:
       - "5000:5000"
     env_file: .env
@@ -19,7 +20,6 @@ services:
       - ./backend:/app                # live reload + lets you drop dog_breed_resnet50_weights.pth into backend/ml/
     depends_on:
       - mongo
-
   frontend:
     build: ./frontend
     ports:
