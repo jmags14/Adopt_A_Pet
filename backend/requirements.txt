@@ -1,6 +1,5 @@
 flask
 flask-cors
-fastapi
 uvicorn[standard]
 python-multipart
 pymongo
@@ -9,3 +8,4 @@ bcrypt
 pyjwt
 python-dotenv
 pillow
+email-validator>=2.0

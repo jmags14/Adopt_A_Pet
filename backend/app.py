@@ -5,33 +5,36 @@ from flask import Flask, jsonify, request, g
 from flask_cors import CORS
 from pymongo import MongoClient
 
+
 import datetime
 import bcrypt
 import jwt
 from functools import wraps
 from bson import ObjectId
 from PIL import Image, UnidentifiedImageError
-from fastapi import FastAPI, File, UploadFile
-from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import JSONResponse
-from starlette.middleware.wsgi import WSGIMiddleware
+
 
 from ml.mlmain import MOCK, predict_image  # dog breed model, loaded once when the backend starts
 
+
 from dotenv import load_dotenv
-load_dotenv()  # FIX: loads backend/.env automatically (was "file.env")
+from pathlib import Path
 
+BASE_DIR = Path(__file__).resolve().parent.parent
+load_dotenv(BASE_DIR / ".env")
 
+from email_validator import validate_email, EmailNotValidError
+from pymongo.errors import DuplicateKeyError
 
-flask_api = Flask(__name__)
-CORS(flask_api)
-
-
+app = Flask(__name__)
+CORS(app)
 
 client = MongoClient(os.environ["MONGO_URI"])
 db = client["adoptapet"]
-JWT_SECRET = os.environ["JWT_SECRET_KEY"]  # FIX: uncommented, square brackets
 
+db.users.create_index("email", unique=True)
+
+JWT_SECRET = os.environ["JWT_SECRET_KEY"]
 
 
 def require_auth(f):
@@ -50,13 +53,7 @@ def require_auth(f):
        return f(*args, **kwargs)
    return wrapper
 
-
-
-
-
-
-
-@flask_api.get("/api/health")
+@app.get("/api/health")
 def health():
    """Checks Mongo and the ML model. If this returns all 'ok', Docker is wired correctly."""
    status = {"backend": "ok"}
@@ -69,18 +66,107 @@ def health():
    status["ml"] = "mock (no weights file in backend/ml/)" if MOCK else "ok"
    return jsonify(status)
 
+@app.get("/api/location/zip")
+def coordinates_to_zip():
+    try:
+        lat = float(request.args["lat"])
+        lon = float(request.args["lon"])
+
+        if not (-90 <= lat <= 90 and -180 <= lon <= 180):
+            return jsonify({"error": "Invalid coordinates"}), 400
+
+        response = requests.get(
+            "https://nominatim.openstreetmap.org/reverse",
+            params={
+                "lat": lat,
+                "lon": lon,
+                "format": "json",
+                "addressdetails": 1,
+                "zoom": 18
+            },
+            headers={
+                "User-Agent": "AdoptAPetStudentProject/1.0"
+            },
+            timeout=10
+        )
+        response.raise_for_status()
+
+        address = response.json().get("address", {})
+        zip_code = address.get("postcode", "").split("-")[0]
+
+        if not (len(zip_code) == 5 and zip_code.isdigit()):
+            return jsonify({"error": "ZIP code unavailable"}), 404
+
+        return jsonify({"zip": zip_code}), 200
+
+    except (KeyError, ValueError):
+        return jsonify({"error": "Invalid coordinates"}), 400
+    except requests.RequestException:
+        return jsonify({"error": "Location lookup failed"}), 502
 
 
 
-
-
-
-
-@flask_api.post("/api/auth/signup")
+@app.post("/api/auth/signup")
 def signup():
-   data = request.get_json(silent=True) or {}
-   email = (data.get("email") or "").strip().lower()
-   password = data.get("password") or ""
+    data = request.get_json(silent=True) or {}
+
+    email = (data.get("email") or "").strip().lower()
+    password = data.get("password") or ""
+
+    # Validate email
+    try:
+        email = validate_email(
+            email,
+            check_deliverability=False
+        ).normalized.lower()
+    except EmailNotValidError:
+        return jsonify({
+            "error": "Please enter a valid email address"
+        }), 400
+
+    # Validate password
+    if len(password) < 8:
+        return jsonify({
+            "error": "Password must be at least 8 characters"
+        }), 400
+
+    # Check for an existing account
+    if db.users.find_one({"email": email}):
+        return jsonify({
+            "error": "Email already registered"
+        }), 409
+
+    # Hash password
+    password_hash = bcrypt.hashpw(
+        password.encode("utf-8"),
+        bcrypt.gensalt()
+    )
+
+    now = datetime.datetime.now(datetime.timezone.utc)
+
+    # Save account
+    try:
+        result = db.users.insert_one({
+            "email": email,
+            "password": password_hash.decode("utf-8"),
+            "createdAt": now
+        })
+    except DuplicateKeyError:
+        return jsonify({
+            "error": "Email already registered"
+        }), 409
+
+    # Create authentication token
+    token = jwt.encode(
+        {
+            "sub": str(result.inserted_id),
+            "exp": now + datetime.timedelta(days=1)
+        },
+        JWT_SECRET,
+        algorithm="HS256"
+    )
+
+    return jsonify({"token": token}), 201
 
 
 
@@ -88,72 +174,17 @@ def signup():
 
 
 
-
-   if not email or "@" not in email:
-       return jsonify({"error" : "A valid email is required"}), 400
-   if len(password) < 8:
-       return jsonify({"error" : "Password must be at least 8 characters"}), 400
-   if db.users.find_one({"email" : email}):
-       return jsonify({"error" : "Email already registered"}), 409
-
-
-
-
-
-
-
-
-   password_hash = bcrypt.hashpw(password.encode("utf-8"), bcrypt.gensalt())
-   now = datetime.datetime.now(datetime.timezone.utc)
-   result = db.users.insert_one({
-       "email" : email,
-       "password" : password_hash.decode("utf-8"),
-       "createdAt" : now
-   })
-
-
-
-
-
-
-
-
-   # FIX: return a JWT (outline says signup returns a JWT), built inline
-   token = jwt.encode(
-       {
-           "sub": str(result.inserted_id),
-           "exp": now + datetime.timedelta(days=1),
-       },
-       JWT_SECRET,
-       algorithm="HS256",
-   )
-   return jsonify({"token" : token}), 201
-
-
-
-
-@flask_api.post("/api/auth/login")
+@app.post("/api/auth/login")
 def login():
    data = request.get_json(silent=True) or {}
    email = (data.get("email") or "").strip().lower()
    password = data.get("password") or ""
 
 
-
-
    user = db.users.find_one({"email" : email})
-
-
-
 
    if user is None:
        return jsonify({"error": "Invalid email or password"}), 401
-
-
-
-
-
-
 
 
    if not bcrypt.checkpw(
@@ -161,11 +192,6 @@ def login():
        user["password"].encode("utf-8")
    ):
        return jsonify({"error" : "Invalid email or password"}), 401
-
-
-
-
-
 
 
 
@@ -181,48 +207,114 @@ def login():
    return jsonify({"token" : token}), 200
 
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-@flask_api.get("/api/dogs")
+@app.get("/api/dogs")
 def get_dogs():
-    # 1. Read the filters send by react
-    zip_code = request.args.get("zip", "").strip()
-    breed = request.args.get("breed", "").strip()
+    return search_dogs(request.args)
+
+def format_dog(animal, included):
+    attributes = animal.get("attributes") or {}
+
+    def get_value(*keys):
+        for key in keys:
+            value = attributes.get(key)
+            if value not in (None, ""):
+                return value
+        return None
+
+    breed = get_value("breedPrimary", "breedSecondary") or "Unknown breed"
+
+    photo = (
+        get_value("pictureUrl")
+        or get_value("pictureThumbnailUrl")
+        or ""
+    )
+
+    # Find the location associated with this dog.
+    location = ""
+
+    relationships = animal.get("relationships") or {}
+    location_data = (relationships.get("locations") or {}).get("data") or []
+
+    included_locations = {
+        str(item.get("id")): item.get("attributes") or {}
+        for item in included
+        if item.get("type") == "locations"
+    }
+
+    for item in location_data:
+        location_info = included_locations.get(str(item.get("id")), {})
+
+        city = location_info.get("city") or ""
+        state = location_info.get("state") or ""
+
+        if city and state:
+            location = f"{city}, {state}"
+        elif city:
+            location = city
+        elif state:
+            location = state
+        elif location_info.get("postalcode"):
+            location = location_info["postalcode"]
+
+        if location:
+            break
+
+    # Fall back to any location fields directly on the dog.
+    if not location:
+        location = (
+            get_value("location")
+            or get_value("postalcode")
+            or "Location unavailable"
+        )
+
+    return {
+        "id": str(animal.get("id", "")),
+        "name": get_value("name") or "Name unavailable",
+        "breed": breed,
+        "secondaryBreed": get_value("breedSecondary") or "",
+        "location": location,
+        "age": get_value("ageGroup") or "Unknown",
+        "weight": get_value("sizeGroup") or "Unknown",
+        "sex": get_value("sex") or "Unknown",
+        "image": photo,
+        "description": get_value("descriptionText") or "",
+        "url": get_value("url")
+    }
+
+
+def search_dogs(params):
+    # 1. Read the search filters.
+    zip_code = params.get("zip", "").strip()
+    breed = params.get("breed", "").strip()
 
 
     try:
-        radius = int(request.args.get("radius", "50"))
-        page = int(request.args.get("page", "1"))
+        radius = int(params.get("radius", "50"))
+        page = int(params.get("page", "1"))
     except ValueError:
-        return jsonify({"error": "Radius and page must be whole numbers"}), 400
+        return jsonify({
+            "error": "Radius and page must be whole numbers"
+        }), 400
 
 
     # 2. Check the inputs.
     if len(zip_code) != 5 or not zip_code.isascii() or not zip_code.isdigit():
-       return jsonify({"error": "Enter a five-digit US ZIP code"}), 400
+        return jsonify({
+            "error": "Enter a five-digit US ZIP code"
+        }), 400
 
 
     if radius not in (10, 25, 50, 100):
-        return jsonify({"error": "Choose a radius of 10, 25, 50, or 100 miles"}), 400
+        return jsonify({
+            "error": "Choose a radius of 10, 25, 50, or 100 miles"
+        }), 400
 
 
     if page < 1:
         return jsonify({"error": "Page must be at least 1"}), 400
 
 
-    # 3. Always apply the location and radius.
+    # 3. Apply the location and radius.
     search_data = {
         "filterRadius": {
             "postalcode": zip_code,
@@ -231,12 +323,14 @@ def get_dogs():
     }
 
 
-    gender = request.args.get("gender", "").strip().title()
-    age = request.args.get("age", "").strip().title()
+    gender = params.get("gender", "").strip().title()
+    age = params.get("age", "").strip().title()
 
 
     if gender and gender not in ("Male", "Female"):
-        return jsonify({"error": "Gender must be Male or Female"}), 400
+        return jsonify({
+            "error": "Gender must be Male or Female"
+        }), 400
 
 
     if age and age not in ("Baby", "Young", "Adult", "Senior"):
@@ -251,21 +345,22 @@ def get_dogs():
     filters = []
     conditions = []
 
-
     if breed:
         filters.extend([
             {
                 "fieldName": "animals.breedPrimary",
-                "operation": "equal",
+                "operation": "contains",
                 "criteria": breed
             },
             {
                 "fieldName": "animals.breedSecondary",
-                "operation": "equal",
+                "operation": "contains",
                 "criteria": breed
             }
         ])
         conditions.append("(1 OR 2)")
+
+
 
 
     if gender:
@@ -277,6 +372,8 @@ def get_dogs():
         conditions.append(str(len(filters)))
 
 
+
+
     if age:
         filters.append({
             "fieldName": "animals.ageGroup",
@@ -286,12 +383,11 @@ def get_dogs():
         conditions.append(str(len(filters)))
 
 
+
+
     if filters:
         search_data["filters"] = filters
         search_data["filterProcessing"] = " AND ".join(conditions)
-
-
-
 
 
     # 5. Search RescueGroups.
@@ -305,11 +401,14 @@ def get_dogs():
             },
             params={
                 "limit": 20,
-                "page": page
+                "page": page,
+                "include": "locations"
             },
             json={"data": search_data},
             timeout=30
         )
+
+
 
 
         response.raise_for_status()
@@ -332,18 +431,28 @@ def get_dogs():
     except ValueError:
         return jsonify({"error": "RescueGroups returned invalid data"}), 502
 
-
-    return jsonify(result), 200
-
+    included = result.get("included") or []
 
 
+    dogs = [
+        format_dog(animal, included)
+        for animal in (result.get("data") or [])
+    ]
 
-@flask_api.get("/api/dogs/<dog_id>")
+
+    return jsonify({
+        "dogs": dogs,
+        "meta": result.get("meta") or {}
+    }), 200
+
+
+
+
+@app.get("/api/dogs/<dog_id>")
 def get_dog_details(dog_id):
     # Check that the ID contains only digits.
     if not dog_id.isascii() or not dog_id.isdigit():
         return jsonify({"error": "Invalid dog ID"}), 400
-
 
     try:
         response = requests.get(
@@ -358,19 +467,14 @@ def get_dog_details(dog_id):
             },
             timeout=30
         )
-
-
         if response.status_code == 404:
             return jsonify({"error": "Dog listing not found"}), 404
-
 
         response.raise_for_status()
         result = response.json()
 
-
     except requests.exceptions.Timeout:
         return jsonify({"error": "RescueGroups took too long to respond"}), 504
-
 
     except requests.exceptions.HTTPError as error:
         return jsonify({
@@ -379,10 +483,8 @@ def get_dog_details(dog_id):
             "details": error.response.text
         }), 502
 
-
     except requests.exceptions.RequestException:
         return jsonify({"error": "Could not retrieve dog details"}), 502
-
 
     except ValueError:
         return jsonify({"error": "RescueGroups returned invalid data"}), 502
@@ -391,9 +493,7 @@ def get_dog_details(dog_id):
     if not result.get("data"):
         return jsonify({"error": "Dog listing not found"}), 404
 
-
     return jsonify(result), 200
-
 
 
 
@@ -411,12 +511,7 @@ def favorite_to_json(fav):
 
 
 
-
-
-
-
-
-@flask_api.get("/api/favorites")
+@app.get("/api/favorites")
 @require_auth
 def get_favorites():
    favs = db.favorites.find({"userId": ObjectId(g.user_id)}).sort("savedAt", -1)
@@ -424,12 +519,7 @@ def get_favorites():
 
 
 
-
-
-
-
-
-@flask_api.post("/api/favorites")
+@app.post("/api/favorites")
 @require_auth
 def add_favorite():
    data = request.get_json(silent=True) or {}
@@ -438,23 +528,15 @@ def add_favorite():
 
 
 
-
    if not rescuegroup_id or not name:
        return jsonify({"error": "rescuegroupID and name are required"}), 400
 
 
-
-
    user_id = ObjectId(g.user_id)
-
-
-
 
    # don't let the same user save the same dog twice
    if db.favorites.find_one({"userId": user_id, "rescuegroupID": rescuegroup_id}):
        return jsonify({"error": "Already in favorites"}), 409
-
-
 
 
    favorite = {
@@ -472,17 +554,11 @@ def add_favorite():
 
 
 
-
-
-
-
-
-@flask_api.delete("/api/favorites/<id>")
+@app.delete("/api/favorites/<id>")
 @require_auth
 def remove_favorite(id):
    if not ObjectId.is_valid(id):
        return jsonify({"error": "Invalid favorite id"}), 400
-
 
 
 
@@ -494,8 +570,7 @@ def remove_favorite(id):
 
 
 
-
-@flask_api.get("/api/me")
+@app.get("/api/me")
 @require_auth
 def get_my_profile():
     user = db.users.find_one(
@@ -504,83 +579,92 @@ def get_my_profile():
     )
 
 
+
+
     if user is None:
         return jsonify({"error": "User not found"}), 404
+
+
 
 
     user["id"] = str(user.pop("_id"))
 
 
+
+
     return jsonify(user), 200
 
-
-
-
-@flask_api.post("/api/predict")
-def predict():
-   """Receives an image from React, runs the dog breed model (ml/mlmain.py) on it, returns the result."""
-   if "image" not in request.files:
-       return jsonify({"error": "No image uploaded (field name must be 'image')"}), 400
-   img = request.files["image"]
-   if not (img.mimetype or "").startswith("image/"):
-       return jsonify({"error": "File uploaded is not an image"}), 400
-
-
-
-
-   try:
-       image = Image.open(img.stream)
-       image.load()   # actually read the pixels, so broken files fail here
-   except (UnidentifiedImageError, OSError):
-       return jsonify({"error": "File is not a readable image"}), 400
-
-
-
-
-   result = predict_image(image)
-
-
-
-
-   # TODO (week 3-4): attach userId from JWT, save to UploadedImage collection
-   return jsonify(result), 200
-
-
-
-
-
-
-
-
-app = FastAPI(title="Adopt a Pet API")
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=["*"],
-    allow_methods=["*"],
-    allow_headers=["*"],
-)
-
-
 @app.post("/api/predict")
-async def predict_with_fastapi(image: UploadFile = File(...)):
-    """Run the local ResNet50 model from the single FastAPI service."""
-    if not (image.content_type or "").startswith("image/"):
-        return JSONResponse({"error": "File uploaded is not an image"}, status_code=400)
+def predict():
+    # Check the uploaded file.
+    if "image" not in request.files:
+        return jsonify({
+            "error": "No image uploaded (field name must be 'image')"
+        }), 400
+
+
+    img = request.files["image"]
+
+
+    if not (img.mimetype or "").startswith("image/"):
+        return jsonify({
+            "error": "File uploaded is not an image"
+        }), 400
+
 
     try:
-        contents = await image.read()
-        from io import BytesIO
-
-        with Image.open(BytesIO(contents)) as opened:
-            opened.load()
-            result = predict_image(opened)
-    except (UnidentifiedImageError, OSError, ValueError):
-        return JSONResponse({"error": "File is not a readable image"}, status_code=400)
-
-    return JSONResponse(result)
+        image = Image.open(img.stream)
+        image.load()
+    except (UnidentifiedImageError, OSError):
+        return jsonify({
+            "error": "File is not a readable image"
+        }), 400
 
 
-# Keep the existing auth, dog search, and favorites handlers in this file and
-# expose them through the same FastAPI process until they are migrated.
-app.mount("/", WSGIMiddleware(flask_api))
+    # Predict the breed.
+    prediction = predict_image(image)
 
+
+    if not isinstance(prediction, dict):
+        return jsonify({
+            "error": "The model returned an unexpected result"
+        }), 500
+
+
+    # This assumes your ML result uses the key "breed".
+    breed = prediction.get("predictedBreed")
+
+
+    if not isinstance(breed, str) or not breed.strip():
+        return jsonify({
+            "error": "The model did not return a usable breed"
+        }), 500
+
+
+    # Read ZIP, radius, and other filters from the uploaded form.
+    params = request.form.to_dict()
+    params["breed"] = breed.strip()
+
+
+    # Search for dogs using the predicted breed.
+    search_response, status_code = search_dogs(params)
+    search_result = search_response.get_json()
+
+
+    if status_code != 200:
+        return jsonify({
+            "prediction": prediction,
+            **search_result
+        }), status_code
+
+
+    # Send the prediction and matching dogs to the frontend.
+    return jsonify({
+        "prediction": prediction,
+        "dogs": search_result["dogs"],
+        "meta": search_result["meta"]
+    }), 200
+
+
+if __name__ == "__main__":
+   app.run(debug=True, port=5001)
