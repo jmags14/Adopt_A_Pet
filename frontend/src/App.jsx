@@ -1,7 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import './index.css';
 
-// Set VITE_API_BASE_URL in frontend/.env if your backend runs at another address.
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:5000';
 const MAX_DOGS = 20;
 
@@ -22,6 +21,8 @@ function normalizeDog(dog, index) {
         description: dog.description ?? dog.bio ?? '',
     };
 }
+
+// need this for the rest dear god.
 
 function Star() {
     return <img src="/src/assets/star.png" className="star" alt="" aria-hidden="true" />;
@@ -61,8 +62,12 @@ function Sidebar({ page, onNavigate }) {
 
     return (
         <aside className="sidebar" aria-label="Main navigation">
-            <button className="profile-button" aria-label="Profile" onClick={() => onNavigate('browse')}>
-                <img src="/src/assets/doki.jpg" alt="Profile" />
+            <button
+                className="profile-button"
+                aria-label="Profile"
+                onClick={() => onNavigate('login')}
+            >
+                <img src="/src/assets/pfp.png" alt="Profile" />
             </button>
             {navigationItems.map((item) => (
                 <button
@@ -160,7 +165,7 @@ function BrowsePage({
 }) {
     const normalizedQuery = query.trim().toLowerCase();
     const baseDogs = page === 'saved' ? dogs.filter((dog) => savedIds.includes(dog.id)) : dogs;
-    // Deliberately search only the breed field, never the dog's name.
+    // Search on dog breed (NOT DOG NAME. miscommunication)
     const filteredDogs = baseDogs
         .filter((dog) => !normalizedQuery || dog.breed.toLowerCase().includes(normalizedQuery))
         .slice(0, MAX_DOGS);
@@ -298,7 +303,30 @@ export default function App() {
     const [uploadError, setUploadError] = useState('');
     const fileInput = useRef(null);
 
+    function clearUpload() {
+        // Release the previous image preview from memory.
+        if (previewUrl) {
+            URL.revokeObjectURL(previewUrl);
+        }
+
+        // Clear the selected image.
+        setSelectedFile(null);
+        setPreviewUrl('');
+
+        // Reset the actual file input.
+        if (fileInput.current) {
+            fileInput.current.value = '';
+        }
+
+        setUploadNotice('');
+        setUploadError('');
+    }
+
     function go(nextPage) {
+        if (nextPage === 'upload') {
+            clearUpload();
+        }
+
         setPage(nextPage);
         setUploadNotice('');
         setUploadError('');
@@ -393,8 +421,12 @@ export default function App() {
             }
 
             setQuery(breed);
+
+            // Clear the uploaded photo after successful identification.
+            clearUpload();
+
+            // Navigate to the search page.
             setPage('browse');
-            setUploadNotice('');
         } catch (error) {
             setUploadError(
                 error instanceof TypeError
